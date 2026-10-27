@@ -1,0 +1,252 @@
+@import "../src/components/layout/workspace.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Local fonts fall back to the system stack without remote font requests. */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans font-normal;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Selection - minimal */
+  ::selection {
+    background: rgba(224, 224, 224, 0.15);
+    color: #E0E0E0;
+  }
+
+  /* Scrollbar - nearly invisible */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2A2A2A;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3A3A3A;
+  }
+}
+
+@layer components {
+  /* Line that extends and settles */
+  .line {
+    @apply h-px bg-muted-dim;
+    transform-origin: left;
+  }
+
+  .line-extend {
+    animation: line-extend 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Terminal dot - the ending mass */
+  .terminal-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-muted;
+    animation: mass-form 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Fade divider - line that fades at the end */
+  .divider-fade {
+    @apply h-px;
+    background: linear-gradient(to right, #3A3A3A, transparent);
+  }
+
+  .divider-fade-both {
+    @apply h-px;
+    background: linear-gradient(to right, transparent, #3A3A3A 20%, #3A3A3A 80%, transparent);
+  }
+
+  /* Panel styles */
+  .panel {
+    @apply bg-surface rounded-lg border border-border;
+  }
+
+  .panel-elevated {
+    @apply bg-surface-elevated rounded-lg border border-border;
+  }
+
+  /* Input line style - thin line that expands */
+  .input-line {
+    @apply w-full bg-transparent border-0 border-b border-muted-dim 
+           px-0 py-3 text-foreground font-light
+           placeholder:text-muted
+           focus:outline-none focus:border-foreground
+           transition-all duration-300;
+  }
+
+  .input-line:focus {
+    border-bottom-width: 2px;
+    padding-bottom: 11px;
+  }
+
+  /* Input pill - expanded state */
+  .input-pill {
+    @apply w-full bg-surface border border-border
+           px-5 py-3 text-foreground font-light
+           rounded-terminal
+           placeholder:text-muted
+           focus:outline-none focus:border-muted
+           transition-all duration-300;
+  }
+
+  /* Button terminal - pill with rounded ends */
+  .btn-terminal {
+    @apply inline-flex items-center justify-center
+           h-11 px-8
+           bg-foreground text-background
+           font-normal text-sm tracking-wide
+           rounded-terminal
+           transition-all duration-300
+           hover:bg-accent
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-terminal-secondary {
+    @apply inline-flex items-center justify-center
+           h-11 px-8
+           bg-transparent text-foreground
+           border border-border
+           font-normal text-sm tracking-wide
+           rounded-terminal
+           transition-all duration-300
+           hover:border-muted hover:bg-surface;
+  }
+
+  .btn-terminal-ghost {
+    @apply inline-flex items-center justify-center
+           h-10 px-6
+           bg-transparent text-muted
+           font-normal text-sm tracking-wide
+           rounded-terminal
+           transition-all duration-300
+           hover:text-foreground hover:bg-surface;
+  }
+
+  /* Progress line - thickens toward end */
+  .progress-line {
+    @apply h-px bg-muted-dim relative overflow-hidden;
+  }
+
+  .progress-line::after {
+    content: '';
+    @apply absolute left-0 top-0 h-full bg-foreground;
+    transition: width 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+  }
+
+  /* Loader - line flowing to dot */
+  .loader-line {
+    @apply relative h-px bg-muted-dim;
+  }
+
+  .loader-line::before {
+    content: '';
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-8 h-px bg-foreground;
+    animation: loader-flow 1.5s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+  }
+
+  @keyframes loader-flow {
+    0% { left: 0; width: 0; }
+    30% { left: 0; width: 20%; }
+    70% { left: 80%; width: 20%; }
+    100% { left: 100%; width: 0; }
+  }
+
+  /* Step indicator */
+  .step-line {
+    @apply h-px bg-muted-dim flex-1;
+  }
+
+  .step-line-active {
+    @apply h-0.5 bg-foreground flex-1;
+  }
+
+  .step-dot {
+    @apply w-2 h-2 rounded-full bg-muted-dim;
+  }
+
+  .step-dot-active {
+    @apply w-2 h-2 rounded-full bg-foreground;
+  }
+
+  .step-dot-complete {
+    @apply w-1.5 h-1.5 rounded-full bg-muted;
+  }
+}
+
+@layer utilities {
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Stagger animations */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+
+  /* Flow utilities */
+  .flow-right {
+    @apply flex items-center;
+  }
+
+  /* Number styling */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Wallet adapter overrides - minimal style */
+.wallet-adapter-button {
+  @apply bg-foreground text-background font-normal text-sm
+         rounded-terminal h-11 px-6 !important;
+}
+
+.wallet-adapter-button:hover {
+  @apply bg-accent !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  @apply bg-surface border border-border !important;
+}
+
+.wallet-adapter-modal-title {
+  @apply text-foreground font-light !important;
+}
+
+.wallet-adapter-modal-list {
+  @apply m-0 !important;
+}
+
+.wallet-adapter-modal-list li {
+  @apply border-b border-border !important;
+}
+
+.amount-preset { min-height:36px; padding:7px 11px; border:1px solid #3c454c; border-radius:7px; background:#ffffff02; font-size:12px; font-weight:450; color:#b5c0c8; transition:background .15s,border-color .15s,color .15s; }
+.amount-preset:hover { background:#ffffff05; border-color:#63716e; color:#e7eeeb; }
+.amount-preset.selected { color:#b4dfce; border-color:#9bd8c25a; background:#9bd8c20a; }
+.amount-preset:disabled { opacity:.45; cursor:not-allowed; }
+.preset-edit { display:grid; place-items:center; width:36px; padding:7px; }
+.preset-editor { padding:15px; border:1px solid #343e44; border-radius:9px; background:#11131540; }
+
+.library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:20px}.library-art{display:grid;place-items:center;flex-shrink:0;width:60px;height:60px;background:#20262a;border:1px solid #2d3539;border-radius:9px;color:#a4dac5;font-size:20px}.library-art img{width:100%;height:100%;object-fit:contain;border-radius:8px}.icon-action{min-width:42px;min-height:42px;display:inline-grid;place-items:center;border:1px solid #2d3539;border-radius:8px;color:#adb8b3}.icon-action:hover{background:#20262a;color:#edf2ef}.filter-tabs button{display:inline-flex;align-items:center;gap:7px}

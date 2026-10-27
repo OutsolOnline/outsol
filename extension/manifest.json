@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "OutSol — Token Drafts",
+  "version": "1.0.1",
+  "description": "Turn a public page, selected text, or image into an editable OutSol token launch draft.",
+  "minimum_chrome_version": "102",
+  "permissions": ["activeTab", "scripting", "contextMenus"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": {
+    "default_title": "Prepare a token draft with OutSol",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" }
+  },
+  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'" }
+}

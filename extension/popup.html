@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OutSol · Prepare a launch draft</title>
+    <link rel="stylesheet" href="popup.css">
+    <script type="module" src="popup.js"></script>
+  </head>
+  <body>
+    <main>
+      <header><img src="icons/icon-48.png" width="38" height="38" alt=""><span class="brand">OutSol<span class="brand-dot">.</span></span><span class="badge">BROWSER COMPANION</span></header>
+      <p class="eyebrow" id="source-kind">CURRENT PAGE → LAUNCH DRAFT</p>
+      <h1>An idea.<br>A head start.</h1>
+      <p class="intro">Bring the spark to OutSol. Review the details, then continue to your token draft.</p>
+      <form id="draft-form" novalidate>
+        <div class="name-row">
+          <label for="name">Token name <span id="name-count">0/32 bytes</span><input id="name" name="name" type="text" autocomplete="off" maxlength="64" placeholder="Give your idea a name" required></label>
+          <label for="symbol">Symbol<input id="symbol" name="symbol" type="text" autocomplete="off" maxlength="10" pattern="[A-Za-z0-9]{1,10}" placeholder="IDEA" required></label>
+        </div>
+        <label for="description">Description<textarea id="description" name="description" maxlength="1000" rows="3" placeholder="What is the story?"></textarea></label>
+        <label for="source-url">Source page<input id="source-url" name="sourceUrl" type="url" autocomplete="off" maxlength="2000" required></label>
+        <label for="image-url">Image suggestion <span>OPTIONAL</span><input id="image-url" name="imageUrl" type="url" autocomplete="off" maxlength="2000" placeholder="https://…"></label>
+        <p class="field-note">Image links are suggestions. Choose and upload artwork in OutSol.</p>
+        <p id="status" class="status" role="status" aria-live="polite">Reading the current page…</p>
+        <button id="open-draft" type="submit" disabled>Open launch draft <span aria-hidden="true">↗</span></button>
+      </form>
+      <footer>YOU STAY IN CONTROL<span>Wallet approval happens in OutSol.</span></footer>
+    </main>
+  </body>
+</html>

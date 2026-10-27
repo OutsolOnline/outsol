@@ -1,0 +1,16 @@
+.git/
+node_modules/
+.next/
+.env*
+!.env.example
+work/
+outputs/
+logs/
+*.log
+*.keypair.json
+*-keypair.json
+keypair-*.json
+mint-*.json
+wallet-*.json
+wallet.local.json
+vanity-private-wallet-backup.json
