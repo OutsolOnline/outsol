@@ -11,6 +11,7 @@ A focused Pump.fun workspace for Solana: token design, native creation, an optio
 - An animated product homepage, grouped tools menu and a separate Launches workspace with the approved OutSol identity.
 - Block-0, Organic and Manual wallet buys inside launch preparation, with reviewed budgets and exact native transaction plans.
 - Optional **Send bought tokens to** destinations for additional Block-0 buyers. Each configured buyer transfers its exact purchase output in the same transaction; the review includes recipient-account rent and full receiving addresses. Switching away from Block-0 clears these destinations.
+- Private hosted access through a shared-password sign-in, with expiring server-verified sessions protecting pages and private APIs. Public token metadata stays readable; see [private deployment access](DEPLOYMENT.md#private-access).
 - Verified creator fee destinations: deployer, another Solana wallet, GitHub individual or holder rewards. See [creator fee routing](docs/CREATOR-FEE-ROUTING.md).
 - Public X post imports and reviewed launch announcements. Optional account connection requires the owner setup in [X connection](docs/X-CONNECTION.md).
 - Complete local Pump.fun rehearsal with disposable fake-SOL wallets, actual program execution and a downloadable post-state report.

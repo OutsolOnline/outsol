@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { storePublicTokenMetadata } from '@/lib/server/publicAssets'
 import { isAllowedRequestOrigin } from '@/lib/server/requestOrigin'
+import { withAppAccess } from '@/lib/server/appAccess'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,7 +44,7 @@ async function readBody(request: Pick<Request, 'body'>, maximum: number): Promis
   return body
 }
 
-export async function POST(request: NextRequest) {
+async function upload(request: NextRequest) {
   const reply = (error: string, status: number) => NextResponse.json({ error }, { status, headers: { 'Cache-Control': 'no-store' } })
   if (!isAllowedRequestOrigin(request)) return reply('Origin not allowed', 403)
   if (!request.headers.get('content-type')?.startsWith('multipart/form-data;')) return reply('Multipart upload required', 415)
@@ -130,3 +131,5 @@ export async function POST(request: NextRequest) {
     } finally { clearTimeout(timeout) }
   } catch { return reply('Metadata upload unavailable. Retry later or use the manual launch flow.', 502) }
 }
+
+export const POST = withAppAccess(upload)

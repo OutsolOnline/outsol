@@ -10,7 +10,7 @@ export default defineRailway(() => {
     healthcheckTimeout: 120,
     replicas: { "iad": 1 },
     volumeMounts: { "/data": vanityVolume },
-    env: { APP_ALLOWED_ORIGINS: preserve(), ASSET_STORAGE_DIR: preserve(), NODE_ENV: preserve(), PORT: preserve(), PUBLIC_APP_URL: preserve(), RPC_URL: preserve(), X_CLIENT_ID: preserve(), X_CLIENT_SECRET: preserve(), X_CALLBACK_URL: preserve(), X_TOKEN_ENCRYPTION_KEY: preserve(), X_STORAGE_DIR: preserve() },
+    env: { APP_ACCESS_PASSWORD_HASH: preserve(), APP_ACCESS_SESSION_SECRET: preserve(), APP_ALLOWED_ORIGINS: preserve(), ASSET_STORAGE_DIR: preserve(), NODE_ENV: preserve(), PORT: preserve(), PUBLIC_APP_URL: preserve(), RPC_URL: preserve(), X_CLIENT_ID: preserve(), X_CLIENT_SECRET: preserve(), X_CALLBACK_URL: preserve(), X_TOKEN_ENCRYPTION_KEY: preserve(), X_STORAGE_DIR: preserve() },
   });
 
   return project("vanity", {

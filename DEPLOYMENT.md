@@ -22,6 +22,16 @@ Current source no longer connects to Supabase. The original project failed DNS r
 
 No secret is needed for `npm run build`; provider settings are runtime configuration. The `.env.example` lists the supported variable names. The Docker dependency stage includes `vendor/` so `npm ci` can resolve the local BigInt replacement.
 
+## Private access
+
+The deployed application requires a shared password. Configure `APP_ACCESS_PASSWORD_HASH` and an independent `APP_ACCESS_SESSION_SECRET` as server-only runtime variables before releasing this version. The password hash uses `scrypt$32768$8$1$<salt>$<hash>` with a random 16-byte salt and 32-byte derived key, both base64url encoded. The session secret is 32 independently generated random bytes encoded as base64url. Keep the password in a password manager; never commit the password or either runtime variable. Railway IaC preserves both variables.
+
+Visitors sign in at `/access`. Successful sign-in creates a host-only HttpOnly Secure production cookie with an eight-hour lifetime and SameSite=Lax. Rotating either access variable invalidates existing sessions. Sign out from `/access` to clear the current browser session. Missing or malformed production configuration denies access instead of exposing the application. Local development/test bypasses access only when neither access variable is configured.
+
+Both pages and private API handlers enforce access, including RPC, uploads, rehearsal and X account operations. Only the process health check and exact immutable public metadata/image GET/HEAD routes stay public; static build assets needed for rendering contain no credentials. Login/logout require a configured trusted Origin and login attempts are bounded and rate-limited. Limits are per process and assume the existing single-instance deployment. The public repository remains public: the password restricts this hosted instance, not copies of its source.
+
+Before release, verify anonymous pages redirect to `/access`, private APIs reject requests without a valid session, a valid login opens the app, logout clears the browser cookie, and public health/metadata still work. Repeat checks on the custom domain and the Railway service domain. Do not submit transactions as an access-control test.
+
 ## Keep public metadata available
 
 The default upload path needs only the configured RPC and Railway volume: validated image bytes and public JSON are stored under SHA-256 filenames and served from `/api/assets/[file]` with immutable cache headers. Uploads accept PNG, JPEG, WebP or GIF up to 5 MB; SVG, mismatched basic file signatures, duplicate fields and oversized text are rejected.

@@ -1,4 +1,5 @@
 import { xAuthService } from '@/lib/server/xAuth/service'
+import { withAppAccess } from '@/lib/server/appAccess'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const POST = xAuthService.connect
+export const POST = withAppAccess(xAuthService.connect)
