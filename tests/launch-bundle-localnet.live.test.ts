@@ -1,6 +1,6 @@
 import {afterEach,describe,expect,it,vi} from 'vitest'
 import {writeFileSync} from 'node:fs'
-import {Connection,Keypair,PublicKey,VersionedTransaction} from '@solana/web3.js'
+import {Connection,Keypair,PublicKey,TransactionMessage,VersionedTransaction} from '@solana/web3.js'
 import {ExtensionType,TOKEN_2022_PROGRAM_ID,getAssociatedTokenAddressSync,getExtensionData,unpackAccount,unpackMint} from '@solana/spl-token'
 import {unpack} from '@solana/spl-token-metadata'
 import {PUMP_PROGRAM_ID,PUMP_SDK,bondingCurvePda,PUMP_FEE_PROGRAM_ID,creatorVaultPda} from '@pump-fun/pump-sdk'
@@ -86,6 +86,75 @@ describe.skipIf(process.env.RUN_LAUNCH_BUNDLE_LOCALNET!=='1')('production inline
    proofs.push(proof);if(process.env.VANITY_LAUNCH_BUNDLE_EVIDENCE_FILE)writeFileSync(process.env.VANITY_LAUNCH_BUNDLE_EVIDENCE_FILE,JSON.stringify(proofs,null,2)+'\n');console.log(JSON.stringify(proof))
   },120_000)
  }
+ async function prepareTransferCase(destination:'shared'|'creator'|'buyer'){
+  const h=await setup(),payer=h.creator.publicKey.toBase58(),selected=h.buyers.slice(0,2)
+  const keys=new Map(selected.map((key,index)=>[`buyer-${index}`,key]))
+  const settings={...DEFAULT_LAUNCH_BUNDLE_SETTINGS,mode:'block0' as const,groupId:'disposable-transfer-group',wallets:selected.map((key,index)=>({
+   walletId:`buyer-${index}`,publicKey:key.publicKey.toBase58(),name:`Buyer ${index+1}`,buySol:0.01+index*0.005,delaySeconds:0,
+   transferTo:destination==='shared'?h.buyers[2].publicKey.toBase58():destination==='creator'||index===1?payer:selected[1].publicKey.toBase58(),
+  }))}
+  const guards={readSigner:()=>payer,readBuyer:(id:string)=>keys.get(id)??null}
+  const prepared=await prepareLaunchBundle(h.connection,{payer,mintKeypair:h.mint,metadata:{name:'Buy and transfer',symbol:'MOVE',uri:'https://example.com/move.json'},devBuySol:0.01,slippage:5,priorityFeeSol:0.00002,jitoTipSol:0.00001,settings},guards,{
+   simulate:async(connection,packets,options)=>{
+    const accounts=[...new Map(packets.flatMap(packet=>packet.message.staticAccountKeys).map(key=>[key.toBase58(),key])).values()]
+    for(let index=0;index<accounts.length;index+=100)await connection.getMultipleAccountsInfo(accounts.slice(index,index+100))
+    return simulateAtomicBundle(connection,packets,options)
+   },
+   sendBundle:(connection,packets,options)=>submitAtomicBundle(connection,packets,{...options,endpoint:h.endpoint}),
+  })
+  return {h,prepared,guards,selected}
+ }
+ for(const destination of ['shared','creator','buyer'] as const){
+  it(`atomically transfers exact Block-0 purchase outputs to the ${destination} recipient`,async()=>{
+   const {h,prepared,guards,selected}=await prepareTransferCase(destination)
+   const participants=[h.creator,...h.buyers],before=await Promise.all(participants.map(key=>h.connection.getBalance(key.publicKey)))
+   expect(prepared.review.transfers).toHaveLength(2)
+   expect(prepared.transactions.every(packet=>packet.serialize().length<=1232)).toBe(true)
+   const result=await executePreparedLaunchBundle(prepared,{approved:true,...guards,
+    signCreator:async packets=>{packets.forEach(packet=>packet.sign([h.creator]));return packets},
+    onInitialBroadcast:savePending,onInitialConfirmed:saveConfirmed,onInitialNotSubmitted:clearPendingIfMatching,onReceipt:persistBundleCheckpoint,
+   })
+   expect(result.status,result.error).toBe('confirmed')
+   expect(result.tokenTransfers).toEqual(prepared.review.transfers)
+   const expected=new Map<string,bigint>([[h.creator.publicKey.toBase58(),BigInt(prepared.creatorLaunchPlan.firstBuyTokenAmountRaw)]])
+   for(const transfer of prepared.review.transfers!)expected.set(transfer.recipient,(expected.get(transfer.recipient)||0n)+BigInt(transfer.rawAmount))
+   const balances=await Promise.all(participants.map(key=>tokenAmount(h.connection,h.mint.publicKey,key.publicKey)))
+   participants.forEach((key,index)=>expect(balances[index]).toBe(expected.get(key.publicKey.toBase58())||0n))
+   const after=await Promise.all(participants.map(key=>h.connection.getBalance(key.publicKey)))
+   expect((BigInt(before[0])-BigInt(after[0])).toString()).toBe(prepared.review.creatorDebitLamports)
+   selected.forEach((_key,index)=>expect((BigInt(before[index+1])-BigInt(after[index+1])).toString()).toBe(prepared.review.wallets[index].initialDebitLamports))
+   expect(after[3]).toBe(before[3])
+   expect(readPending()).toBeNull();expect(readPendingBundleReceipt()).toBeNull()
+   expect(JSON.stringify([...h.storage.values()])).not.toMatch(/privateKey|secretKey|encodedTransactions|signedBytes|mintKeypair/)
+   const proof={proof:'production-block0-buy-and-transfer',destination,mint:result.mintAddress,transfers:result.tokenTransfers,signatures:result.submittedSignatures,tokenBalancesRaw:balances.map(value=>value.toString()),packetBytes:prepared.transactions.map(packet=>packet.serialize().length),realSolSpent:false,checks:['exact-recipient-credits','source-only-transfers-purchased-output','same-bank-signed-and-unsigned-preview','per-payer-costs-match','original-signatures-only']}
+   proofs.push(proof)
+   if(process.env.VANITY_LAUNCH_BUNDLE_EVIDENCE_FILE)writeFileSync(process.env.VANITY_LAUNCH_BUNDLE_EVIDENCE_FILE,JSON.stringify(proofs,null,2)+'\n')
+  },120_000)
+ }
+ it('rolls back creation and buys when an actual local buyer transfer cannot execute',async()=>{
+  const {h,prepared}=await prepareTransferCase('shared')
+  const packets=prepared.transactions.map(packet=>VersionedTransaction.deserialize(packet.serialize()))
+  let corrupted=false
+  for(let index=0;index<packets.length&&!corrupted;index++){
+   const decoded=TransactionMessage.decompile(packets[index].message)
+   const transfer=decoded.instructions.find(ix=>ix.programId.equals(TOKEN_2022_PROGRAM_ID)&&ix.data[0]===12)
+   if(!transfer)continue
+   transfer.data=Buffer.from(transfer.data);transfer.data.writeBigUInt64LE(18_446_744_073_709_551_615n,1)
+   packets[index]=new VersionedTransaction(decoded.compileToV0Message());corrupted=true
+  }
+  expect(corrupted).toBe(true)
+  const signers=[h.creator,...h.buyers,h.mint]
+  for(const packet of packets){
+   const required=packet.message.staticAccountKeys.slice(0,packet.message.header.numRequiredSignatures)
+   packet.sign(signers.filter(key=>required.some(address=>address.equals(key.publicKey))))
+  }
+  const before=await Promise.all([h.creator,...h.buyers].map(key=>h.connection.getBalance(key.publicKey)))
+  // This deliberately bypasses app validation only inside the identity-checked,
+  // loopback-only fake-SOL harness to prove actual bank rollback.
+  await expect(h.rpc('sendBundle',[packets.map(packet=>Buffer.from(packet.serialize()).toString('base64')),{encoding:'base64'}])).rejects.toThrow(/Local sendBundle failed/)
+  expect(await h.connection.getAccountInfo(h.mint.publicKey,'confirmed')).toBeNull()
+  expect(await Promise.all([h.creator,...h.buyers].map(key=>h.connection.getBalance(key.publicKey)))).toEqual(before)
+ },120_000)
  it('refuses three immediate buyers when maximum metadata consumes two launch packets, without creating a mint',async()=>{
   const h=await setup(),payer=h.creator.publicKey.toBase58(),keys=new Map(h.buyers.map((key,index)=>[`buyer-${index}`,key])),settings={...DEFAULT_LAUNCH_BUNDLE_SETTINGS,mode:'block0' as const,groupId:'local',wallets:h.buyers.map((key,index)=>({walletId:`buyer-${index}`,publicKey:key.publicKey.toBase58(),name:'Local',buySol:0.01,delaySeconds:0}))}
   await expect(prepareLaunchBundle(h.connection,{payer,mintKeypair:h.mint,metadata:{name:'N'.repeat(32),symbol:'S'.repeat(10),uri:'https://example.com/'.padEnd(200,'m')},devBuySol:0.01,slippage:5,priorityFeeSol:0.00002,jitoTipSol:0.00001,settings},{readSigner:()=>payer,readBuyer:id=>keys.get(id)??null})).rejects.toThrow(/capacity|reduce|packet/i)

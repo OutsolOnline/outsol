@@ -9,7 +9,9 @@ export interface PendingLaunch extends Omit<LaunchReceipt, 'confirmedAt'> { paye
 export function publicPending(input: PendingLaunch): PendingLaunch {
   const routing = input.creatorFeeRouting === undefined ? undefined : parseResolvedCreatorFeeRouting(input.creatorFeeRouting)
   if (routing && (routing.payer !== input.payer || routing.mint !== input.mint || input.mode !== 'standard' || (input.venue !== undefined && input.venue !== 'pump'))) throw new Error('Saved creator fee routing does not match this Pump launch.')
-  return { ...(input.bundleExecution===undefined?{}:{bundleExecution:publicLaunchBundleOutcome(input.bundleExecution)}), mode: input.mode, mint: input.mint, signatures: [...input.signatures], payer: input.payer, blockhash: input.blockhash, submittedAt: input.submittedAt, poolAddress: input.poolAddress, lockAddress: input.lockAddress, unlockAt: input.unlockAt, ...(input.venue ? { venue: input.venue } : {}), ...(input.phase ? { phase: input.phase } : {}), ...(input.lookupTableAddress ? { lookupTableAddress: input.lookupTableAddress } : {}), ...(Number.isSafeInteger(input.expiresAfterBlockHeight) ? { expiresAfterBlockHeight: input.expiresAfterBlockHeight } : {}), ...(routing ? { creatorFeeRouting: routing } : {}) }
+  const outcome=input.bundleExecution===undefined?undefined:publicLaunchBundleOutcome(input.bundleExecution)
+  if(outcome?.transfers?.length&&(input.mode!=='standard'||(input.venue!==undefined&&input.venue!=='pump')||outcome.transfers.some(item=>item.mint!==input.mint)))throw new Error('Saved token transfer intent does not match this Pump launch.')
+  return { ...(outcome===undefined?{}:{bundleExecution:outcome}), mode: input.mode, mint: input.mint, signatures: [...input.signatures], payer: input.payer, blockhash: input.blockhash, submittedAt: input.submittedAt, poolAddress: input.poolAddress, lockAddress: input.lockAddress, unlockAt: input.unlockAt, ...(input.venue ? { venue: input.venue } : {}), ...(input.phase ? { phase: input.phase } : {}), ...(input.lookupTableAddress ? { lookupTableAddress: input.lookupTableAddress } : {}), ...(Number.isSafeInteger(input.expiresAfterBlockHeight) ? { expiresAfterBlockHeight: input.expiresAfterBlockHeight } : {}), ...(routing ? { creatorFeeRouting: routing } : {}) }
 }
 export function pastExpiryBoundary(pending: PendingLaunch, finalizedHeight: number): boolean {
   return Number.isSafeInteger(pending.expiresAfterBlockHeight) && pending.expiresAfterBlockHeight! > 0 && finalizedHeight > pending.expiresAfterBlockHeight!
@@ -32,9 +34,7 @@ export function savePending(input: PendingLaunch) {
 }
 export function samePending(a: PendingLaunch | null, b: PendingLaunch): boolean {
   if (!a || a.mint !== b.mint || a.blockhash !== b.blockhash || a.signatures.length !== b.signatures.length || !a.signatures.every((signature,index) => signature === b.signatures[index])) return false
-  if (a.creatorFeeRouting === undefined && b.creatorFeeRouting === undefined) return true
-  if (a.creatorFeeRouting === undefined || b.creatorFeeRouting === undefined) return false
-  try { return JSON.stringify(publicPending(a).creatorFeeRouting) === JSON.stringify(publicPending(b).creatorFeeRouting) } catch { return false }
+  try {const first=publicPending(a),second=publicPending(b);return JSON.stringify(first.creatorFeeRouting)===JSON.stringify(second.creatorFeeRouting)&&JSON.stringify(first.bundleExecution?.transfers)===JSON.stringify(second.bundleExecution?.transfers)}catch{return false}
 }
 export function clearPendingIfMatching(pending: PendingLaunch) {
   if (samePending(readPending(), pending)) localStorage.removeItem(PENDING_KEY)

@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest'
 import {Connection,Keypair,PublicKey,TransactionMessage,VersionedTransaction} from '@solana/web3.js'
-import {TOKEN_2022_PROGRAM_ID} from '@solana/spl-token'
+import {getAssociatedTokenAddressSync,TOKEN_2022_PROGRAM_ID} from '@solana/spl-token'
 import {buildFreshNativeBuy} from '../src/lib/pumpfun/api'
 import {createJitoTipTransaction} from '../src/lib/bundler/jito'
 import {signedTransactionSignature} from '../src/lib/transactions/send'
@@ -11,27 +11,82 @@ import type {LaunchBundlePorts,LaunchBundleExecutionOptions} from '../src/lib/la
 import {consumerLaunchPlan} from './helpers/consumerLaunchPlan'
 import type {CreatorFeeSelection} from '../src/lib/creatorFeeRouting'
 import {creatorVaultPda} from '@pump-fun/pump-sdk'
+import type {LaunchBundleWallet} from '../src/lib/launchBundle/types'
 const wrongVault=(tx:VersionedTransaction)=>{const message=TransactionMessage.decompile(tx.message),buy=message.instructions.find(ix=>ix.data.subarray(0,8).equals(Buffer.from([102,6,61,18,1,218,235,234])))!;buy.keys[9].pubkey=creatorVaultPda(Keypair.generate().publicKey);return new VersionedTransaction(new TransactionMessage({payerKey:message.payerKey,recentBlockhash:message.recentBlockhash,instructions:message.instructions}).compileToV0Message())}
 async function harness(mode:'manual'|'block0'|'organic'='block0',selection?:CreatorFeeSelection,long=false,devBuySol=0){
  const creator=Keypair.generate(),buyer=Keypair.generate(),secondBuyer=Keypair.generate(),mint=Keypair.generate(),blockhash=Keypair.generate().publicKey.toBase58();let locked=false,time=1_000,sent=0,initialConfirmed=false
  const receipts:unknown[]=[],events:string[]=[]
- const input={payer:creator.publicKey.toBase58(),mintKeypair:mint,metadata:long?{name:'N'.repeat(32),symbol:'S'.repeat(10),uri:'https://example.com/'.padEnd(200,'m')}:{name:'Inline',symbol:'INL',uri:'ipfs://inline'},devBuySol,slippage:5,priorityFeeSol:0.0001,jitoTipSol:0.00001,...(selection===undefined?{}:{creatorFeeSelection:selection}),...(selection?.kind==='github'?{githubRecipient:{userId:'583231',username:selection.username,profileUrl:`https://github.com/${selection.username}`,accountType:'User' as const}}:{}),settings:{...DEFAULT_LAUNCH_BUNDLE_SETTINGS,mode,groupId:'group',wallets:[{walletId:'buyer',publicKey:buyer.publicKey.toBase58(),name:'Buyer',buySol:0.01,delaySeconds:1}]}}
+ const input={payer:creator.publicKey.toBase58(),mintKeypair:mint,metadata:long?{name:'N'.repeat(32),symbol:'S'.repeat(10),uri:'https://example.com/'.padEnd(200,'m')}:{name:'Inline',symbol:'INL',uri:'ipfs://inline'},devBuySol,slippage:5,priorityFeeSol:0.0001,jitoTipSol:0.00001,...(selection===undefined?{}:{creatorFeeSelection:selection}),...(selection?.kind==='github'?{githubRecipient:{userId:'583231',username:selection.username,profileUrl:`https://github.com/${selection.username}`,accountType:'User' as const}}:{}),settings:{...DEFAULT_LAUNCH_BUNDLE_SETTINGS,mode,groupId:'group',wallets:[{walletId:'buyer',publicKey:buyer.publicKey.toBase58(),name:'Buyer',buySol:0.01,delaySeconds:1} as LaunchBundleWallet]}}
  const connection={getBalance:async()=>1_000_000_000,getFeeForMessage:async()=>({value:5_000}),isBlockhashValid:async()=>({value:true}),getBlockHeight:async()=>10,getAccountInfo:async()=>({owner:TOKEN_2022_PROGRAM_ID})} as unknown as Connection
  const ports:Partial<LaunchBundlePorts>={now:()=>time,wait:async ms=>{time+=ms},random:()=>0,
   buildCreate:params=>consumerLaunchPlan(params,blockhash),
   buildFreshBuy:buildFreshNativeBuy,
   buildBuy:async params=>{expect(initialConfirmed).toBe(true);const plan=await consumerLaunchPlan({userPublicKey:creator.publicKey.toBase58(),mintKeypair:mint,metadata:{...input.metadata,description:''},metadataUri:input.metadata.uri,creatorFeeSelection:input.creatorFeeSelection as never,githubRecipient:input.githubRecipient},blockhash);return (await buildFreshNativeBuy({context:plan.nativeContext!,mint:mint.publicKey,payer:new PublicKey(params.userPublicKey),metadata:input.metadata,maxBuyLamports:BigInt(Math.round(params.maxBuyAmountSol*1e9)),blockhash,priorityFee:params.priorityFee})).transaction},
   tip:async(_c,p,b,l)=>createJitoTipTransaction(p,b,l),
-  simulate:async(_c,txs,opts)=>{const accounts=opts?.accounts??[opts?.payer!];return {success:true,payerDebitLamports:accounts[0]===creator.publicKey.toBase58()?'10000000':'10000001',walletDebitsLamports:Object.fromEntries(accounts.map(address=>[address,address===creator.publicKey.toBase58()?'10000000':txs.some(tx=>tx.message.staticAccountKeys[0].toBase58()===address)?'10000001':'0']))}},
+  simulate:async(_c,txs,opts)=>{const accounts=opts?.accounts??[opts?.payer!];return {success:true,payerDebitLamports:accounts[0]===creator.publicKey.toBase58()?'10000000':'10000001',walletDebitsLamports:Object.fromEntries(accounts.map(address=>[address,address===creator.publicKey.toBase58()?'10000000':txs.some(tx=>tx.message.staticAccountKeys[0].toBase58()===address)?'10000001':'0'])),...(opts?.tokenAccounts?{tokenAccountDeltasRaw:Object.fromEntries(opts.tokenAccounts.map(item=>[item.address,item.expectedDeltaRaw]))}:{})}},
   sendSingle:async(_c,tx,opts)=>{opts?.onBroadcast?.();sent++;return {status:'confirmed',signature:signedTransactionSignature(tx),submitted:true}},
   sendBundle:async(_c,txs,opts)=>{opts?.onBroadcast?.();sent++;return {status:'confirmed',signatures:txs.map(signedTransactionSignature),submitted:true,bundleId:'bundle'}},
   verifyRouting:async(_c,routing,binding)=>{expect(routing.payer).toBe(binding.payer);expect(routing.mint).toBe(binding.mint);events.push('routing-verified')}}
  const keys=new Map([['buyer',buyer],['second-buyer',secondBuyer]])
  const guards={readSigner:()=>creator.publicKey.toBase58(),readBuyer:(id:string)=>locked?null:keys.get(id)??null}
  const options:LaunchBundleExecutionOptions={approved:true,...guards,signCreator:async txs=>txs.map(tx=>{tx.sign([creator]);return tx}),onInitialBroadcast:()=>{events.push('pending')},onInitialConfirmed:()=>{initialConfirmed=true;events.push('confirmed')},onReceipt:receipt=>{receipts.push(receipt);events.push('receipt')}}
- return {input,connection,ports,guards,options,receipts,events,creator,buyer,mint,lock:()=>{locked=true},sent:()=>sent,setTime:(value:number)=>{time=value},addSecondBuyer:()=>{input.settings.wallets.push({walletId:'second-buyer',publicKey:secondBuyer.publicKey.toBase58(),name:'Second buyer',buySol:0.01,delaySeconds:1})}}
+ return {input,connection,ports,guards,options,receipts,events,creator,buyer,secondBuyer,mint,lock:()=>{locked=true},sent:()=>sent,setTime:(value:number)=>{time=value},addSecondBuyer:()=>{input.settings.wallets.push({walletId:'second-buyer',publicKey:secondBuyer.publicKey.toBase58(),name:'Second buyer',buySol:0.01,delaySeconds:1})}}
 }
 describe('reviewed inline bundle engine',()=>{
+ it('composes a signed exact-output transfer in its buyer packet and persists detached original intent',async()=>{
+  const h=await harness(),recipient=Keypair.generate().publicKey.toBase58();h.input.settings.wallets[0].transferTo=recipient
+  const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,h.ports),intent=structuredClone(prepared.review.transfers)
+  expect(intent).toHaveLength(1);expect(intent![0]).toMatchObject({walletId:'buyer',payer:h.buyer.publicKey.toBase58(),recipient,mint:h.mint.publicKey.toBase58(),tokenProgram:TOKEN_2022_PROGRAM_ID.toBase58(),decimals:6})
+  expect(TransactionMessage.decompile(prepared.transactions[1].message).instructions.at(-1)!.data.readBigUInt64LE(1).toString()).toBe(intent![0].rawAmount)
+  prepared.review.transfers![0].recipient=Keypair.generate().publicKey.toBase58();h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58()
+  let saved:unknown;const result=await executePreparedLaunchBundle(prepared,{...h.options,onInitialBroadcast:pending=>{saved=structuredClone(pending.bundleExecution?.transfers);pending.bundleExecution!.transfers![0].rawAmount='1'},onReceipt:receipt=>{receipt.tokenTransfers![0].recipient=Keypair.generate().publicKey.toBase58()}})
+  expect(result.success,result.error).toBe(true);expect(result.tokenTransfers).toEqual(intent);expect(saved).toEqual(intent);expect(h.sent()).toBe(1)
+ })
+ it('aggregates shared recipient output once and charges each payer its actual simulated rent debit',async()=>{
+  const h=await harness(),recipient=Keypair.generate().publicKey;h.addSecondBuyer();h.input.settings.wallets.forEach(wallet=>{wallet.transferTo=recipient.toBase58()})
+  const simulate=h.ports.simulate!;let inspected:Parameters<LaunchBundlePorts['simulate']>[2]
+  const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,simulate:async(...args)=>{inspected=args[2];const result=await simulate(...args);result.walletDebitsLamports![h.buyer.publicKey.toBase58()]='12000001';return result}})
+  const account=getAssociatedTokenAddressSync(h.mint.publicKey,recipient,false,TOKEN_2022_PROGRAM_ID).toBase58(),tokens=inspected!.tokenAccounts!
+  expect(tokens.filter(item=>item.address===account)).toHaveLength(1);expect(tokens.find(item=>item.address===account)!.expectedDeltaRaw).toBe(prepared.review.transfers!.reduce((sum,item)=>sum+BigInt(item.rawAmount),0n).toString())
+  expect(prepared.review.wallets.map(wallet=>wallet.requiredLamports)).toEqual(['12000001','10000001']);expect((await executePreparedLaunchBundle(prepared,h.options)).success).toBe(true)
+ })
+ it('includes creator first buy and cross-participant incoming and outgoing output in net token expectations',async()=>{
+  const h=await harness('block0',undefined,false,0.01);h.addSecondBuyer();h.input.settings.wallets[0].transferTo=h.secondBuyer.publicKey.toBase58();h.input.settings.wallets[1].transferTo=h.creator.publicKey.toBase58()
+  const simulate=h.ports.simulate!;let inspected:Parameters<LaunchBundlePorts['simulate']>[2]
+  const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,simulate:async(...args)=>{inspected=args[2];return simulate(...args)}}),tokens=inspected!.tokenAccounts!,amountFor=(owner:PublicKey)=>tokens.find(item=>item.owner===owner.toBase58())!.expectedDeltaRaw
+  expect(amountFor(h.buyer.publicKey)).toBe('0');expect(amountFor(h.secondBuyer.publicKey)).toBe(prepared.review.transfers![0].rawAmount)
+  expect(amountFor(h.creator.publicKey)).toBe((BigInt(prepared.creatorLaunchPlan.firstBuyTokenAmountRaw)+BigInt(prepared.review.transfers![1].rawAmount)).toString())
+  const result=await executePreparedLaunchBundle(prepared,h.options);expect(result.success,result.error).toBe(true)
+ })
+ it('fails closed on absent unsigned or changed signed token evidence and mutated simulation expectations',async()=>{
+  for(const when of ['unsigned','signed','mutated'] as const){
+   const h=await harness();h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58();const simulate=h.ports.simulate!
+   const ports={...h.ports,simulate:async(...args:Parameters<LaunchBundlePorts['simulate']>)=>{const result=await simulate(...args);if(when==='unsigned'&&!args[2]?.verifySignatures)delete result.tokenAccountDeltasRaw;if(when==='signed'&&args[2]?.verifySignatures)result.tokenAccountDeltasRaw![args[2].tokenAccounts![0].address]='1';if(when==='mutated'){args[2]!.tokenAccounts![0].expectedDeltaRaw='1';result.tokenAccountDeltasRaw![args[2]!.tokenAccounts![0].address]='1'}return result}}
+   if(when==='signed'){const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,ports),result=await executePreparedLaunchBundle(prepared,h.options);expect(result.success).toBe(false);expect(result.error).toMatch(/token|transfer/i)}else await expect(prepareLaunchBundle(h.connection,h.input,h.guards,ports)).rejects.toThrow(/token|transfer/i)
+   expect(h.sent()).toBe(0)
+  }
+ })
+ it('keeps transfer originals on unknown broadcast and never submits the same prepared transfer twice',async()=>{
+  const h=await harness();h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58()
+  const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,sendBundle:async(_c,txs,opts)=>{opts?.onBroadcast?.();return {status:'unknown',signatures:txs.map(signedTransactionSignature),submitted:true,error:'lost response'}}}),intent=structuredClone(prepared.review.transfers),result=await executePreparedLaunchBundle(prepared,h.options)
+  expect(intent).toHaveLength(1);expect(result.status).toBe('unknown');expect(result.tokenTransfers).toEqual(intent);expect(result.submittedSignatures).toHaveLength(3)
+  await expect(executePreparedLaunchBundle(prepared,h.options)).rejects.toThrow(/already|used/i)
+ })
+ it('rejects an oversized composed buyer input with a clear packet limit before signing',async()=>{
+  const h=await harness(),build=h.ports.buildFreshBuy!;h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58()
+  await expect(prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,buildFreshBuy:async args=>{const built=await build(args);built.transaction.message.compiledInstructions[0].data=new Uint8Array(1600);return built}})).rejects.toThrow(/packet.*size|1232|1,232/i)
+  expect(h.sent()).toBe(0)
+ })
+ it('rejects insufficient SOL including recipient rent and stops on failed transfer simulation',async()=>{
+  for(const failure of ['balance','simulation'] as const){const h=await harness();h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58();if(failure==='balance')h.connection.getBalance=async()=>1000
+   await expect(prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,...(failure==='simulation'?{simulate:async()=>({success:false,error:'transfer compute budget exceeded'})}:{})})).rejects.toThrow(failure==='balance'?/insufficient SOL/i:/compute budget/i);expect(h.sent()).toBe(0)
+  }
+ })
+ it('cancels a composed launch before broadcast and retains its public transfer intent',async()=>{
+  const h=await harness(),abort=new AbortController(),simulate=h.ports.simulate!;h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58()
+  const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,simulate:async(...args)=>{const value=await simulate(...args);if(args[2]?.verifySignatures)abort.abort();return value}}),result=await executePreparedLaunchBundle(prepared,{...h.options,signal:abort.signal})
+  expect(result.success).toBe(false);expect(result.status).toBe('failed');expect(result.error).toMatch(/abort|cancel/i);expect(result.tokenTransfers).toEqual(prepared.review.transfers);expect(h.sent()).toBe(0)
+ })
  it('saves a conservative public action outcome before broadcasting an interruptible launch',async()=>{
   const h=await harness('organic'),prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,h.ports)
   const result=await executePreparedLaunchBundle(prepared,{...h.options,onInitialBroadcast:pending=>{expect(pending.bundleExecution).toMatchObject({mode:'organic',buyerCount:1,status:'partial'});h.options.onInitialBroadcast(pending)}})

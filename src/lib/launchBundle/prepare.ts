@@ -10,6 +10,8 @@ import {verifyCreatorFeeRoutingOnChain} from '@/lib/creatorFeeRecovery'
 import {parseLaunchBundleSettings} from './types'
 import {checkLaunchSigners,clonePackets,cloneCreatorPlan,cloneProtocolState,packetMessage,runtimeBundles,validateInitialPackets} from './internal'
 import type {LaunchBundleGuards,LaunchBundleInput,LaunchBundlePorts,LaunchBundleReview,PreparedLaunchBundle,RuntimeLaunchBundle,InitialPacketPolicy} from './model'
+import {composeNativeBuyTransfer,nativeBuyOutput,launchTokenExpectations,assertLaunchTokenEvidence} from './transfers'
+import {publicLaunchBundleTransfers,type LaunchBundleTransfer} from './receipt'
 export type {LaunchBundleInput,LaunchBundleGuards,LaunchBundleReview,PreparedLaunchBundle} from './model'
 
 const defaults:LaunchBundlePorts={buildCreate:buildCreateTransaction,buildFreshBuy:buildFreshNativeBuy,buildBuy:buildNativeBuyTransaction,tip:createVerifiedJitoTipTransaction,simulate:simulateAtomicBundle,sendSingle:sendAndConfirmTransaction,sendBundle:submitAtomicBundle,verifyRouting:verifyCreatorFeeRoutingOnChain,now:Date.now,random:Math.random,wait:async(milliseconds,signal)=>{let remaining=milliseconds;while(remaining>0){throwIfAborted(signal);const gap=Math.min(remaining,250);await new Promise(resolve=>setTimeout(resolve,gap));remaining-=gap}throwIfAborted(signal)}}
@@ -45,20 +47,30 @@ export async function prepareLaunchBundle(connection:Connection,raw:LaunchBundle
  const policies:InitialPacketPolicy[]=packets.map((_,index)=>({kind:index===0?'create':'developer-buy',payer:input.payer,maxSolLamports:index===0&&packets.length>1?0n:developerBudget}))
  if(!packets.length||packets.length>4)throw new Error('The native launch plan exceeds the atomic packet capacity.')
  const blockhash=packets[0].message.recentBlockhash
+ const transfers:LaunchBundleTransfer[]=[],purchases=[{owner:input.payer,rawAmount:creatorPlan.firstBuyTokenAmountRaw,tokenProgram:context.tokenProgram.toBase58()}],hasTransfers=buyers.some(wallet=>wallet.transferTo!==undefined)
  if(input.settings.mode==='block0')for(const wallet of buyers){
   if(packets.length+2>5)throw new Error('This metadata leaves insufficient atomic packet capacity. Reduce immediate buyers or shorten the metadata URI.')
   const next=await ports.buildFreshBuy({context:cloneProtocolState(context),mint:input.mintKeypair.publicKey,payer:new PublicKey(wallet.publicKey),metadata:{...input.metadata},maxBuyLamports:solToLamports(wallet.buySol),blockhash,priorityFee:input.priorityFeeSol});check()
-  context=cloneProtocolState(next.context);contextMatches(context);packets.push(clonePackets([next.transaction])[0]);policies.push({kind:'buyer-buy',payer:wallet.publicKey,maxSolLamports:solToLamports(wallet.buySol),buyerId:wallet.walletId})
+  context=cloneProtocolState(next.context);contextMatches(context)
+  const nativeBuy=clonePackets([next.transaction])[0],buyPolicy={action:'buy' as const,payer:wallet.publicKey,mint:input.mintKeypair.publicKey,maxSolLamports:solToLamports(wallet.buySol),maxPriorityFeeLamports:solToLamports(input.priorityFeeSol),expectedBuyCreator:creatorPlan.routing.effectiveCreator,protocolFeeRecipients:creatorPlan.protocolFeeRecipients}
+  if(hasTransfers){const output=nativeBuyOutput(nativeBuy,buyPolicy);if(output.rawAmount!==context.tokenAmount.toString()||output.tokenProgram!==context.tokenProgram.toBase58())throw new Error('The native buyer output differs from its exact token quote.');purchases.push({owner:wallet.publicKey,...output})}
+  const transfer=wallet.transferTo===undefined?undefined:publicLaunchBundleTransfers([{walletId:wallet.walletId,payer:wallet.publicKey,recipient:wallet.transferTo,mint:input.mintKeypair.publicKey.toBase58(),tokenProgram:context.tokenProgram.toBase58(),rawAmount:context.tokenAmount.toString(),decimals:6}])[0]
+  packets.push(transfer?composeNativeBuyTransfer(nativeBuy,transfer,buyPolicy):nativeBuy)
+  if(transfer)transfers.push(transfer)
+  policies.push({kind:'buyer-buy',payer:wallet.publicKey,maxSolLamports:solToLamports(wallet.buySol),buyerId:wallet.walletId,...(transfer?{transfer:{...transfer},nativeBuy:clonePackets([nativeBuy])[0]}:{})})
  }
  if(atomic){if(tipBudget<1000n)throw new Error('This launch requires an atomic bundle and a nonzero approved tip reserve.');packets.push(await ports.tip(connection,new PublicKey(input.payer),blockhash,Number(tipBudget)));check();policies.push({kind:'tip',payer:input.payer,maxSolLamports:0n})}
  const createdAt=ports.now(),review:LaunchBundleReview={payer:input.payer,mint:input.mintKeypair.publicKey.toBase58(),mode:input.settings.mode,metadataUri:input.metadata.uri,createdAt,expiresAt:createdAt+60_000,blockhash,atomic,packetCount:packets.length,creatorDebitLamports:'0',initialDebitLamports:'0',totalRequirementLamports:'0',networkFeeLamports:'0',jitoTipLamports:atomic?tipBudget.toString():'0',wallets:[],followups:[],creatorFeeRouting:parseResolvedCreatorFeeRouting(routing)}
- const state:RuntimeLaunchBundle={connection,input,mint:input.mintKeypair,review,packets,messages:packets.map(packetMessage),policies,ports,used:false,creatorPlan,creatorPacketCount}
+ if(transfers.length)review.transfers=publicLaunchBundleTransfers(transfers)
+ const tokenAccounts=transfers.length?launchTokenExpectations(review.mint,purchases,transfers):[]
+ const state:RuntimeLaunchBundle={connection,input,mint:input.mintKeypair,review,packets,messages:packets.map(packetMessage),policies,ports,used:false,creatorPlan,creatorPacketCount,tokenAccounts}
  validateInitialPackets(state,packets)
  const addresses=[input.payer,...buyers.map(wallet=>wallet.publicKey)]
  const simulationPackets=clonePackets(packets)
- const simulated=await ports.simulate(connection,simulationPackets,{payer:input.payer,accounts:addresses,signal:guards.signal});check()
+ const simulated=await ports.simulate(connection,simulationPackets,{payer:input.payer,accounts:addresses,...(tokenAccounts.length?{tokenAccounts:tokenAccounts.map(item=>({...item}))}:{}),signal:guards.signal});check()
  if(simulationPackets.length!==state.messages.length||simulationPackets.some((tx,index)=>packetMessage(tx)!==state.messages[index]))throw new Error('The simulated launch message changed. Prepare again.')
  if(!simulated.success||!simulated.walletDebitsLamports)throw new Error(simulated.error||'The complete participating wallet costs could not be verified.')
+ assertLaunchTokenEvidence(simulated,tokenAccounts)
  const debits=simulated.walletDebitsLamports
  review.creatorDebitLamports=amount(debits[input.payer],'Creator debit').toString()
  review.initialDebitLamports=addresses.reduce((total,address)=>total+amount(debits[address],'Wallet debit'),0n).toString()

@@ -24,6 +24,10 @@ Both direct liquidity modes have an additional release gate: **all launch effect
 
 Other multi-packet routes use bounded Jito bundles with a real disclosed tip and signed simulation before submission. The application verifies every signature after acknowledgement. This coordination is not a guarantee that packets cannot be rebroadcast after an uncled block; do not infer that guarantee from a bundle ID.
 
+Additional Block-0 buyers can configure a public receiving wallet. The native exact-output buy, idempotent recipient token-account creation and exact `transferChecked` execute in one buyer transaction. A dedicated validator reconstructs the complete composed message; ordinary buy validation continues to reject transfers. The same-bank unsigned and signed simulations inspect token-account identity and aggregate raw balance changes separately from payer SOL debits. Shared recipients, the creator and other participating buyers are supported, with rent charged according to actual execution order. Packet or simulation failure stops preparation without a later-transfer fallback. The creator's separate first buy remains unchanged.
+
+Transfer destinations participate in preview identity, and leaving Block-0 clears them. Public pending records and receipts preserve the exact sender, recipient, mint, program and raw amount alongside the original transaction signatures. Recovery compares that original intent and never automatically repeats a purchase or transfer after an unknown result.
+
 ## Persistence and cancellation
 
 The wallet vault persists authenticated ciphertext only. Unlocked keys, imported bundler keys, mint keys, generated temporary signers and prepared plans stay in browser memory. Root launch records select only public mode/venue, addresses, signatures, payer/blockhash and timestamps; bundler persistence also selects public receipt fields. No plan or signer object belongs in local/session storage.

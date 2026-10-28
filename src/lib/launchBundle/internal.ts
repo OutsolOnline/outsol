@@ -6,9 +6,10 @@ import {validatePumpLaunchPlan,type NativePumpLaunchPlan} from '@/lib/transactio
 import {parseResolvedCreatorFeeRouting} from '@/lib/creatorFeeRouting'
 import BN from 'bn.js'
 import type {LaunchBundleGuards,LaunchBundleInput,PreparedLaunchBundle,RuntimeLaunchBundle} from './model'
+import {validateComposedNativeBuy} from './transfers'
 
 export const runtimeBundles=new WeakMap<PreparedLaunchBundle,RuntimeLaunchBundle>()
-export const clonePackets=(packets:readonly VersionedTransaction[])=>packets.map(tx=>VersionedTransaction.deserialize(tx.serialize()))
+export const clonePackets=(packets:readonly VersionedTransaction[])=>packets.map(tx=>{let bytes:Uint8Array;try{bytes=tx.serialize();if(bytes.length>1232)throw new Error()}catch{throw new Error('A reviewed launch packet exceeds the Solana 1,232-byte packet size limit. Prepare again.')}return VersionedTransaction.deserialize(bytes)})
 export const packetMessage=(tx:VersionedTransaction)=>Buffer.from(tx.message.serialize()).toString('base64')
 export function cloneCreatorPlan(plan:NativePumpLaunchPlan):NativePumpLaunchPlan{return {version:plan.version,routing:parseResolvedCreatorFeeRouting(plan.routing),metadata:{...plan.metadata},maxBuyLamports:plan.maxBuyLamports,firstBuyTokenAmountRaw:plan.firstBuyTokenAmountRaw,maxPriorityFeeLamports:plan.maxPriorityFeeLamports,jitoTipLamports:plan.jitoTipLamports,requiresAtomicBundle:plan.requiresAtomicBundle,separateJitoTip:plan.separateJitoTip,protocolFeeRecipients:[...plan.protocolFeeRecipients],packets:clonePackets(plan.packets),stepsByPacket:plan.stepsByPacket.map(steps=>[...steps])}}
 /** Protocol quotes contain BN/PublicKey values; retain their behavior while
@@ -38,7 +39,8 @@ export function validateInitialPackets(state:RuntimeLaunchBundle,packets:readonl
   if(index<state.creatorPacketCount){if(policy.payer!==state.input.payer)throw new Error('A creator launch packet changed payer.');return}
   if(policy.kind!=='tip'){
    if(policy.kind!=='buyer-buy')throw new Error('Unexpected instruction outside the complete creator launch plan.')
-   validatePumpTransaction(tx,{action:'buy',payer:policy.payer,mint:state.review.mint,maxSolLamports:policy.maxSolLamports,maxPriorityFeeLamports:BigInt(Math.round(state.input.priorityFeeSol*1e9)),expectedBuyCreator:state.creatorPlan.routing.effectiveCreator})
+   const buyPolicy={action:'buy' as const,payer:policy.payer,mint:state.review.mint,maxSolLamports:policy.maxSolLamports,maxPriorityFeeLamports:BigInt(Math.round(state.input.priorityFeeSol*1e9)),expectedBuyCreator:state.creatorPlan.routing.effectiveCreator,protocolFeeRecipients:state.creatorPlan.protocolFeeRecipients}
+   if(policy.transfer){if(!policy.nativeBuy||state.input.settings.mode!=='block0')throw new Error('The reviewed token transfer plan is unavailable.');validateComposedNativeBuy(tx,policy.nativeBuy,policy.transfer,buyPolicy)}else validatePumpTransaction(tx,buyPolicy)
    return
   }
   const instructions=TransactionMessage.decompile(tx.message).instructions,ix=instructions[0]

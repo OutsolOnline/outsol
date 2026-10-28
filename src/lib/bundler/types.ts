@@ -1,6 +1,7 @@
 'use client'
 
 import type {CreatorFeeSelection,ResolvedCreatorFeeRouting} from '@/lib/creatorFeeRouting'
+import type {LaunchBundleTransfer} from '@/lib/launchBundle/receipt'
 
 export type BundleMode = 'sniper' | 'natural'
 export type WalletMode = 'sniper' | 'delayed'
@@ -109,6 +110,7 @@ export interface BundleResult {
   submittedSignatures?: string[]
   submissions?: BundleSubmission[]
   creatorFeeRouting?: ResolvedCreatorFeeRouting
+  tokenTransfers?: LaunchBundleTransfer[]
 }
 
 export const DEFAULT_JITO_TIP = 0.0003

@@ -3,11 +3,12 @@ import bs58 from 'bs58'
 import { publicBundleReceipt } from './receipt'
 import type { BundleResult } from './types'
 import { parseResolvedCreatorFeeRouting } from '@/lib/creatorFeeRouting'
+import {publicLaunchBundleTransfers} from '@/lib/launchBundle/receipt'
 
 export const BUNDLE_PENDING_KEY = 'vanity-bundle-pending-v1'
 export const BUNDLE_RECEIPT_KEY = 'vanity-bundle-public-receipt-v1'
 export interface BundleReceiptStorage { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void }
-const FIELDS = ['success', 'status', 'mintAddress', 'createSignature', 'bundleId', 'buySignatures', 'sellSignature', 'bundleSellSignatures', 'submittedSignatures', 'submissions', 'error', 'creatorFeeRouting']
+const FIELDS = ['success', 'status', 'mintAddress', 'createSignature', 'bundleId', 'buySignatures', 'sellSignature', 'bundleSellSignatures', 'submittedSignatures', 'submissions', 'error', 'creatorFeeRouting', 'tokenTransfers']
 function target(storage?: BundleReceiptStorage): BundleReceiptStorage { if (storage) return storage; if (typeof localStorage === 'undefined') throw new Error('Bundle recovery storage is unavailable.'); return localStorage }
 function signature(value: unknown): string {
   if (typeof value !== 'string' || value.length > 88 || bs58.decode(value).length !== 64) throw new Error('Invalid bundle signature')
@@ -48,6 +49,7 @@ export function parseBundleReceipt(value: unknown): BundleResult | null {
   }
   if (result.status === 'unknown' && (!result.mintAddress || !result.submittedSignatures?.length || (result.createSignature && !result.submittedSignatures.includes(result.createSignature)))) throw new Error('Incomplete unknown bundle receipt')
   if (result.status === undefined && result.submittedSignatures?.length) throw new Error('Bundle status is missing')
+  if(input.tokenTransfers!==undefined){result.tokenTransfers=publicLaunchBundleTransfers(input.tokenTransfers);if(result.tokenTransfers.some(item=>item.mint!==result.mintAddress))throw new Error('Bundle token transfer mint does not match')}
   return result
 }
 function parsed(raw: string): unknown { if (raw.length > 100_000) throw new Error('Bundle receipt is too large'); return JSON.parse(raw) }
@@ -71,7 +73,7 @@ export function readPendingBundleReceipt(storage?: BundleReceiptStorage): Bundle
     const value = parsed(raw) as { version?: number; receipt?: unknown }
     const pending = value?.version === 1 ? parseBundleReceipt(value.receipt) : null
     if (!pending || pending.status !== 'unknown') throw new Error('Invalid pending bundle')
-    if (prior?.status === 'unknown' && (prior.mintAddress !== pending.mintAddress || JSON.stringify(prior.creatorFeeRouting)!==JSON.stringify(pending.creatorFeeRouting) || prior.submittedSignatures?.some(value => !pending.submittedSignatures?.includes(value)))) throw new Error('Bundle recovery records disagree')
+    if (prior?.status === 'unknown' && (prior.mintAddress !== pending.mintAddress || JSON.stringify(prior.creatorFeeRouting)!==JSON.stringify(pending.creatorFeeRouting) || JSON.stringify(prior.tokenTransfers)!==JSON.stringify(pending.tokenTransfers) || prior.submittedSignatures?.some(value => !pending.submittedSignatures?.includes(value)))) throw new Error('Bundle recovery records disagree')
     return pending
   } catch { throw new Error('Bundle recovery data cannot be read. Preserve browser data and check the saved signatures before spending again.') }
 }
@@ -85,6 +87,7 @@ export function persistBundleCheckpoint(input: BundleResult, storage?: BundleRec
   if (pending && pending.mintAddress !== next.mintAddress) throw new Error('The pending bundle changed. Preserve its signatures.')
   if(pending?.submissions?.some(item=>JSON.stringify(next.submissions?.find(value=>value.signature===item.signature))!==JSON.stringify(item)))throw new Error('Original bundle submission expiry context cannot be discarded or changed.')
   if (pending && JSON.stringify(pending.creatorFeeRouting)!==JSON.stringify(next.creatorFeeRouting)) throw new Error('The pending creator fee recipient changed. Preserve its signatures.')
+  if(pending&&JSON.stringify(pending.tokenTransfers)!==JSON.stringify(next.tokenTransfers))throw new Error('The pending token transfer intent changed. Preserve its original signatures.')
   if (next.status === 'unknown') {
     if (pending?.submittedSignatures?.some(value => !next.submittedSignatures?.includes(value))) throw new Error('Bundle signatures cannot be discarded while confirmation is unknown.')
     destination.setItem(BUNDLE_PENDING_KEY, JSON.stringify({ version: 1, receipt: next }))

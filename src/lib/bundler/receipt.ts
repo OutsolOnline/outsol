@@ -1,11 +1,14 @@
 import type {BundleResult} from './types'
 import {parseResolvedCreatorFeeRouting} from '@/lib/creatorFeeRouting'
+import {publicLaunchBundleTransfers} from '@/lib/launchBundle/receipt'
 
 /** Deliberately pick public fields; do not persist the surrounding store. */
 export function publicBundleReceipt(receipt:BundleResult|null):BundleResult|null {
   if(!receipt) return null
   const routing=receipt.creatorFeeRouting===undefined?undefined:parseResolvedCreatorFeeRouting(receipt.creatorFeeRouting)
   if(routing&&routing.mint!==receipt.mintAddress)throw new Error('Bundle creator fee routing does not match the saved mint. Preserve the recovery record.')
+  const transfers=receipt.tokenTransfers===undefined?undefined:publicLaunchBundleTransfers(receipt.tokenTransfers)
+  if(transfers?.some(item=>item.mint!==receipt.mintAddress))throw new Error('Token transfer mint differs from the saved receipt.')
   return {
     success:receipt.success,status:receipt.status,mintAddress:receipt.mintAddress,
     createSignature:receipt.createSignature,bundleId:receipt.bundleId,
@@ -13,5 +16,6 @@ export function publicBundleReceipt(receipt:BundleResult|null):BundleResult|null
     bundleSellSignatures:receipt.bundleSellSignatures,submittedSignatures:receipt.submittedSignatures,error:receipt.error,
     ...(receipt.submissions?{submissions:receipt.submissions.map(item=>({signature:item.signature,payer:item.payer,blockhash:item.blockhash,expiresAfterBlockHeight:item.expiresAfterBlockHeight,submittedAt:item.submittedAt}))}:{}),
     ...(routing?{creatorFeeRouting:routing}:{}),
+    ...(transfers?{tokenTransfers:transfers}:{}),
   }
 }

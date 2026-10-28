@@ -13,6 +13,7 @@ import { DEFAULT_LAUNCH_BUNDLE_SETTINGS, parseLaunchBundleSettings, validateLaun
 import styles from './LaunchSettings.module.css'
 import {CreatorFeeFields} from '../CreatorFeeFields'
 import {requireSupportedCreatorFeeSelection} from '@/lib/creatorFeeRouting'
+import {LaunchTransferDestination} from './LaunchTokenTransfers'
 
 const MAX_BUYERS = 16
 const modes: Array<{ id: LaunchBundleSettings['mode']; title: string; subtitle: string; Icon: typeof Zap }> = [
@@ -54,7 +55,7 @@ export function LaunchSettingsStep() {
     current.setBundleSettings({ ...current.bundleSettings, ...patch })
     setError(''); setNotice('')
   }
-  const changeWallet = (walletId: string, patch: { buySol?: number; delaySeconds?: number }) => {
+  const changeWallet = (walletId: string, patch: { buySol?: number; delaySeconds?: number; transferTo?: string }) => {
     const current = useLaunchStore.getState()
     current.setBundleSettings({ ...current.bundleSettings, wallets: current.bundleSettings.wallets.map(row => row.walletId === walletId ? { ...row, ...patch } : row) })
     setError(''); setNotice('')
@@ -141,6 +142,7 @@ export function LaunchSettingsStep() {
             <div className={styles.walletIdentity}><label htmlFor={`launch-include-${member.id}`}>{member.name}</label><span className={styles.walletAddress}>{shortAddress(member.publicKey)}</span><span className={`${styles.lockState} ${unlocked && available ? styles.unlocked : ''}`}>{!available ? 'Unavailable · remove this row' : isPayer ? 'Signing wallet · exclude from buyers' : unlocked ? <><UnlockKeyhole size={10} />Unlocked</> : <><LockKeyhole size={10} />Locked</>}</span></div>
             <div className={styles.rowAmount}><label htmlFor={`launch-buy-${member.id}`} className={styles.mobileFieldLabel}>Buy amount</label><div><Input id={`launch-buy-${member.id}`} type="number" min="0" max="1000" step="0.001" inputMode="decimal" aria-label={`${member.name} buy amount in SOL`} value={numericValue(row?.buySol ?? 0)} disabled={blocked || !selected || !available || isPayer} onChange={event => changeWallet(member.id, { buySol: event.currentTarget.valueAsNumber })} /><span>SOL</span></div></div>
             {settings.mode === 'manual' && <div className={styles.rowDelay}><label htmlFor={`launch-delay-${member.id}`} className={styles.mobileFieldLabel}>Delay</label><div><Input id={`launch-delay-${member.id}`} type="number" min="0" max="3600" step="1" inputMode="numeric" aria-label={`${member.name} delay in seconds after creation confirms`} value={numericValue(row?.delaySeconds ?? 0)} disabled={blocked || !selected || !available || isPayer} onChange={event => changeWallet(member.id, { delaySeconds: event.currentTarget.valueAsNumber })} /><span>sec</span></div></div>}
+            {settings.mode === 'block0' && selected && <div className={styles.rowTransfer}><LaunchTransferDestination id={`launch-transfer-${member.id}`} buyerName={member.name} value={row?.transferTo || ''} disabled={blocked || !available || isPayer} onChange={value => changeWallet(member.id, {transferTo: value.trim() || undefined})}/></div>}
           </div>
         })}</div><p className={styles.rowHelp}>Only included wallets with a buy amount above 0 participate. {settings.mode === 'manual' ? 'A 0-second delay starts after token creation confirms.' : settings.mode === 'block0' ? 'Keep at most three positive buyer amounts; actual packet capacity is checked during preparation.' : 'Buys follow the interval range below.'}</p>
       </>}

@@ -1,6 +1,6 @@
 import type {Connection,Keypair,VersionedTransaction} from '@solana/web3.js'
 import type {buildCreateTransaction,buildFreshNativeBuy,buildNativeBuyTransaction} from '@/lib/pumpfun/api'
-import type {createVerifiedJitoTipTransaction,simulateAtomicBundle,submitAtomicBundle} from '@/lib/bundler/jito'
+import type {createVerifiedJitoTipTransaction,simulateAtomicBundle,submitAtomicBundle,AtomicTokenExpectation} from '@/lib/bundler/jito'
 import type {sendAndConfirmTransaction} from '@/lib/transactions/send'
 import type {BundleResult} from '@/lib/bundler/types'
 import type {PendingLaunch} from '@/lib/launchHistory'
@@ -8,6 +8,7 @@ import type {LaunchBundleSettings,LaunchBundleWallet} from './types'
 import type {CreatorFeeSelection,VerifiedGitHubIndividual,ResolvedCreatorFeeRouting} from '@/lib/creatorFeeRouting'
 import type {NativePumpLaunchPlan} from '@/lib/transactions/validatePumpLaunchPlan'
 import type {verifyCreatorFeeRoutingOnChain} from '@/lib/creatorFeeRecovery'
+import type {LaunchBundleTransfer} from './receipt'
 
 export interface LaunchBundleInput {payer:string;mintKeypair:Keypair;metadata:{name:string;symbol:string;uri:string};devBuySol:number;slippage:number;priorityFeeSol:number;jitoTipSol:number;settings:LaunchBundleSettings;creatorFeeSelection?:CreatorFeeSelection;githubRecipient?:VerifiedGitHubIndividual}
 export interface LaunchBundleGuards {readSigner:()=>string|null|undefined;readBuyer:(walletId:string)=>Keypair|null;signal?:AbortSignal;assertAvailable?:()=>void}
@@ -16,6 +17,7 @@ export interface LaunchBundleReview {
  payer:string;mint:string;mode:LaunchBundleSettings['mode'];metadataUri:string;createdAt:number;expiresAt:number;blockhash:string;atomic:boolean;packetCount:number;
  creatorDebitLamports:string;initialDebitLamports:string;totalRequirementLamports:string;networkFeeLamports:string;jitoTipLamports:string;wallets:LaunchBundleWalletReview[];followups:LaunchBundleWalletReview[]
  creatorFeeRouting:ResolvedCreatorFeeRouting
+ transfers?:LaunchBundleTransfer[]
 }
 /** Public inspection copies. Runtime keys and canonical packets are held separately. */
 export interface PreparedLaunchBundle {review:LaunchBundleReview;transactions:VersionedTransaction[];expectedMessages:string[];followups:LaunchBundleWalletReview[];creatorLaunchPlan:NativePumpLaunchPlan}
@@ -29,5 +31,5 @@ export interface LaunchBundleExecutionOptions extends LaunchBundleGuards {
  onInitialBroadcast:(pending:PendingLaunch)=>void;onInitialConfirmed:(pending:PendingLaunch)=>void;onInitialNotSubmitted?:(pending:PendingLaunch)=>void;
  onReceipt:(receipt:BundleResult)=>void;onProgress?:(message:string)=>void
 }
-export interface InitialPacketPolicy {kind:'create'|'developer-buy'|'buyer-buy'|'tip';payer:string;maxSolLamports:bigint;buyerId?:string}
-export interface RuntimeLaunchBundle {connection:Connection;input:LaunchBundleInput;mint:Keypair;review:LaunchBundleReview;packets:VersionedTransaction[];messages:string[];policies:InitialPacketPolicy[];ports:LaunchBundlePorts;used:boolean;creatorPlan:NativePumpLaunchPlan;creatorPacketCount:number}
+export interface InitialPacketPolicy {kind:'create'|'developer-buy'|'buyer-buy'|'tip';payer:string;maxSolLamports:bigint;buyerId?:string;transfer?:LaunchBundleTransfer;nativeBuy?:VersionedTransaction}
+export interface RuntimeLaunchBundle {connection:Connection;input:LaunchBundleInput;mint:Keypair;review:LaunchBundleReview;packets:VersionedTransaction[];messages:string[];policies:InitialPacketPolicy[];ports:LaunchBundlePorts;used:boolean;creatorPlan:NativePumpLaunchPlan;creatorPacketCount:number;tokenAccounts:AtomicTokenExpectation[]}

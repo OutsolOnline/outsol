@@ -63,7 +63,18 @@ Use the actual development port or deployment origin. Account inspection repeats
 
 ## Evidence and limits
 
-Each command creates `work/pump-e2e-<mode>-<timestamp>/` with:
+The inline launch engine's opt-in `tests/launch-bundle-localnet.live.test.ts` also covers Block-0 buy-and-transfer to a shared destination, the creator and another buyer. It verifies exact recipient balances, preservation of tokens received by a later buyer, actual per-wallet SOL costs and original public receipts. A deliberately failing transfer in the guarded loopback test checks whole-bundle rollback. These cases use freshly generated fake-funded wallets and require the same identity-verified Surfpool 1.6.1 runtime; their presence in the default suite does not mean they executed.
+
+With that runtime ready, run the transfer cases explicitly:
+
+```powershell
+$env:RUN_LAUNCH_BUNDLE_LOCALNET = '1'
+npx vitest run tests/launch-bundle-localnet.live.test.ts -t 'transfers exact Block-0|actual local buyer transfer' --maxWorkers=1
+```
+
+The normal offline tests cover composed instruction validation, amount/destination tampering, shared-account token simulation, rent requirements, preview invalidation, public persistence and unknown-submission recovery without RPC credentials or wallet files.
+
+Each `verify-pump-e2e.mjs` command creates `work/pump-e2e-<mode>-<timestamp>/` with:
 
 - `result.json`: outcome, counts, proof type, limitations, and named checks.
 - `checks.ndjson`: individual successful checks with public local signatures where applicable.

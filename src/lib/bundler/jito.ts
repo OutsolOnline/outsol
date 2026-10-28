@@ -1,6 +1,7 @@
 import { Connection, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import { confirmSignatures, signedTransactionSignature, throwIfAborted, type ConfirmationOptions } from '@/lib/transactions/send'
 import { fetchBounded, withTimeout } from '@/lib/transactions/http'
+import {getAssociatedTokenAddressSync,TOKEN_2022_PROGRAM_ID,TOKEN_PROGRAM_ID,unpackAccount} from '@solana/spl-token'
 
 // Published by Jito's getTipAccounts API and low-latency transaction documentation.
 export const JITO_TIP_ACCOUNTS = [
@@ -14,20 +15,46 @@ export const JITO_TIP_ACCOUNTS = [
   '3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT',
 ] as const
 export interface AtomicBundleReceipt { status: 'confirmed' | 'failed' | 'unknown'; signatures: string[]; submitted?: boolean; bundleId?: string; error?: string }
-export interface AtomicSimulationResult {success:boolean;error?:string;unitsConsumed?:number[];logs?:string[];payerDebitLamports?:string;walletDebitsLamports?:Record<string,string>}
+export interface AtomicTokenExpectation {address:string;owner:string;mint:string;tokenProgram:string;expectedDeltaRaw:string}
+export interface AtomicSimulationResult {success:boolean;error?:string;unitsConsumed?:number[];logs?:string[];payerDebitLamports?:string;walletDebitsLamports?:Record<string,string>;tokenAccountDeltasRaw?:Record<string,string>}
+
+function checkedTokenExpectation(value:AtomicTokenExpectation):AtomicTokenExpectation{
+ for(const field of ['address','owner','mint','tokenProgram'] as const)if(typeof value[field]!=='string'||new PublicKey(value[field]).toBase58()!==value[field])throw new Error('Token simulation identity is invalid')
+ const program=new PublicKey(value.tokenProgram)
+ if(![TOKEN_2022_PROGRAM_ID,TOKEN_PROGRAM_ID].some(id=>id.equals(program))||getAssociatedTokenAddressSync(new PublicKey(value.mint),new PublicKey(value.owner),false,program).toBase58()!==value.address||typeof value.expectedDeltaRaw!=='string'||! /^-?(0|[1-9]\d{0,20})$/.test(value.expectedDeltaRaw))throw new Error('Token simulation expectation is invalid')
+ return {...value}
+}
+/** Token-state inspection is intentionally independent of ordinary wallet lamports. */
+function simulatedTokenAmount(value:unknown,expected:AtomicTokenExpectation,allowMissing:boolean):bigint{
+ if(value===null){if(allowMissing)return 0n;throw new Error('A simulated token account is missing after execution')}
+ if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Token account evidence is incomplete')
+ const info=value as {owner?:unknown;lamports?:unknown;data?:unknown;executable?:unknown;rentEpoch?:number}
+ if(!Number.isSafeInteger(info.lamports)||Number(info.lamports)<0||info.executable!==false||!Array.isArray(info.data)||info.data.length!==2||info.data[1]!=='base64'||typeof info.data[0]!=='string'||info.data[0].length>20000)throw new Error('Token account evidence is malformed')
+ if(allowMissing&&info.owner===SystemProgram.programId.toBase58()&&info.lamports===0&&info.data[0]==='')return 0n
+ if(info.owner!==expected.tokenProgram)throw new Error('Simulated token account program changed')
+ const data=Buffer.from(info.data[0],'base64')
+ if(data.toString('base64')!==info.data[0])throw new Error('Simulated token account data is malformed')
+ const account=unpackAccount(new PublicKey(expected.address),{data,owner:new PublicKey(expected.tokenProgram),lamports:Number(info.lamports),executable:false,rentEpoch:info.rentEpoch??0},new PublicKey(expected.tokenProgram))
+ if(!account.isInitialized||account.isFrozen||account.isNative||account.mint.toBase58()!==expected.mint||account.owner.toBase58()!==expected.owner)throw new Error('Simulated token account owner, mint or state changed')
+ return account.amount
+}
 
 /** Read-only sequential simulation against one bank. Reference: Jito's
  * jito-ts/src/sdk/rpc/connection.ts SimulatedBundleResponse schema.
  * Unsigned preview skips signature checks; submission repeats with checks on.
  */
-export async function simulateAtomicBundle(connection:Connection,transactions:VersionedTransaction[],opts:{verifySignatures?:boolean;timeoutMs?:number;signal?:AbortSignal;payer?:string;accounts?:readonly string[]}={}):Promise<AtomicSimulationResult> {
+export async function simulateAtomicBundle(connection:Connection,transactions:VersionedTransaction[],opts:{verifySignatures?:boolean;timeoutMs?:number;signal?:AbortSignal;payer?:string;accounts?:readonly string[];tokenAccounts?:readonly AtomicTokenExpectation[]}={}):Promise<AtomicSimulationResult> {
   try {
     throwIfAborted(opts.signal)
     if(transactions.length<1||transactions.length>5) throw new Error('Atomic simulation requires 1–5 transactions')
     for(const tx of transactions) if(tx.serialize().length>1232) throw new Error('A transaction exceeds the Solana packet size')
     const addresses=[...new Set([...(opts.payer?[new PublicKey(opts.payer).toBase58()]:[]),...(opts.accounts??[]).map(address=>new PublicKey(address).toBase58())])]
     if(addresses.length>17)throw new Error('At most 17 participating wallet balances can be simulated')
-    const accountRequest = addresses.length ? { encoding: 'base64', addresses } : null
+    const tokens=(opts.tokenAccounts??[]).map(checkedTokenExpectation),tokenAddresses=tokens.map(item=>item.address)
+    if(new Set(tokenAddresses).size!==tokens.length||tokens.some(item=>addresses.includes(item.address)))throw new Error('Token accounts must have distinct aggregate simulation expectations')
+    const inspected=[...addresses,...tokenAddresses]
+    if(inspected.length>20)throw new Error('At most 20 combined wallet and token accounts can be inspected in one bank')
+    const accountRequest = inspected.length ? { encoding: 'base64', addresses:inspected } : null
     const response=await fetchBounded(connection.rpcEndpoint,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({jsonrpc:'2.0',id:1,method:'simulateBundle',params:[{encodedTransactions:transactions.map(tx=>Buffer.from(tx.serialize()).toString('base64'))},{transactionEncoding:'base64',skipSigVerify:!opts.verifySignatures,replaceRecentBlockhash:!opts.verifySignatures,preExecutionAccountsConfigs:transactions.map((_,index)=>index === 0 ? accountRequest : null),postExecutionAccountsConfigs:transactions.map((_,index)=>index === transactions.length - 1 ? accountRequest : null)}]}),
@@ -38,18 +65,23 @@ export async function simulateAtomicBundle(connection:Connection,transactions:Ve
     if(value?.summary!=='succeeded'||!Array.isArray(value.transactionResults)||value.transactionResults.length!==transactions.length) throw new Error('Simulation did not confirm success for the complete bundle')
     const failed=value.transactionResults.find((tx:{err:unknown})=>tx.err!==null)
     if(failed) throw new Error(`Transaction simulation failed: ${JSON.stringify(failed.err)}`)
-    const walletDebitsLamports:Record<string,string>={}
-    if(addresses.length){
+    const walletDebitsLamports:Record<string,string>={},tokenAccountDeltasRaw:Record<string,string>={}
+    if(inspected.length){
      const beforeAccounts=value.transactionResults[0].preExecutionAccounts,afterAccounts=value.transactionResults[transactions.length-1].postExecutionAccounts
-     if(!Array.isArray(beforeAccounts)||!Array.isArray(afterAccounts)||beforeAccounts.length!==addresses.length||afterAccounts.length!==addresses.length)throw new Error('The provider could not verify every participating wallet balance')
+     if(!Array.isArray(beforeAccounts)||!Array.isArray(afterAccounts)||beforeAccounts.length!==inspected.length||afterAccounts.length!==inspected.length)throw new Error('The provider could not verify every participating wallet and token account')
      addresses.forEach((address,index)=>{
       const before = beforeAccounts[index]?.lamports
       const after = afterAccounts[index]?.lamports
       if (!Number.isSafeInteger(before) || !Number.isSafeInteger(after) || before < 0 || after < 0 || after > before) throw new Error('The provider could not verify the complete launch cost in one bank')
       walletDebitsLamports[address]=(BigInt(before)-BigInt(after)).toString()
      })
+     tokens.forEach((expected,index)=>{
+      const before=simulatedTokenAmount(beforeAccounts[addresses.length+index],expected,true),after=simulatedTokenAmount(afterAccounts[addresses.length+index],expected,false),delta=after-before
+      if(delta!==BigInt(expected.expectedDeltaRaw))throw new Error('The complete bundle token delta differs from the exact reviewed purchases and transfers')
+      tokenAccountDeltasRaw[expected.address]=delta.toString()
+     })
     }
-    return {success:true,...(opts.payer?{payerDebitLamports:walletDebitsLamports[new PublicKey(opts.payer).toBase58()]}:{}),...(opts.accounts?{walletDebitsLamports}:{}),unitsConsumed:value.transactionResults.map((tx:{unitsConsumed?:number})=>tx.unitsConsumed??0),logs:value.transactionResults.flatMap((tx:{logs?:string[]})=>tx.logs??[]).slice(-50)}
+    return {success:true,...(opts.payer?{payerDebitLamports:walletDebitsLamports[new PublicKey(opts.payer).toBase58()]}:{}),...(opts.accounts?{walletDebitsLamports}:{}),...(opts.tokenAccounts?{tokenAccountDeltasRaw}:{}),unitsConsumed:value.transactionResults.map((tx:{unitsConsumed?:number})=>tx.unitsConsumed??0),logs:value.transactionResults.flatMap((tx:{logs?:string[]})=>tx.logs??[]).slice(-50)}
   } catch(error){return {success:false,error:`Bundle simulation failed; nothing was submitted. ${error instanceof Error?error.message:'Simulation unavailable'}`}}
 }
 

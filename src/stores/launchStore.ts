@@ -4,7 +4,8 @@ import { TokenMetadata, LaunchStep } from '@/lib/pumpfun/types'
 import { DEFAULT_LAUNCH_CONFIG, LaunchConfig } from '@/lib/launchConfig'
 import { LAUNCH_STEP_ORDER } from '@/lib/launchFlow'
 import {DEFAULT_LAUNCH_BUNDLE_SETTINGS,type LaunchBundleSettings} from '@/lib/launchBundle/types'
-import type {LaunchBundleOutcome} from '@/lib/launchBundle/receipt'
+import {publicLaunchBundleOutcome,type LaunchBundleOutcome} from '@/lib/launchBundle/receipt'
+import type {BundleResult} from '@/lib/bundler/types'
 import type { ResolvedCreatorFeeRouting } from '@/lib/creatorFeeRouting'
 
 export interface LaunchReceipt {
@@ -74,6 +75,15 @@ interface LaunchStore {
 
 const STEP_ORDER = LAUNCH_STEP_ORDER
 
+/** The signing guard and visible preview must compare the same public launch intent. */
+export function launchReviewKey(state: Pick<LaunchStore, 'config' | 'bundleSettings' | 'metadata' | 'metadataUri' | 'getMintKeypair' | 'usePlatformWallet'>, payer: string | null | undefined) {
+  return JSON.stringify({config:state.config,bundleSettings:state.bundleSettings,metadata:state.metadata,metadataUri:state.metadataUri,mint:state.getMintKeypair()?.publicKey.toBase58(),payer,usePlatformWallet:state.usePlatformWallet})
+}
+
+export function launchOutcomeFromResult(mode: LaunchBundleSettings['mode'], buyerCount: number, result: Pick<BundleResult, 'status' | 'error' | 'tokenTransfers'>): LaunchBundleOutcome {
+  return publicLaunchBundleOutcome({mode,buyerCount,status:result.status==='confirmed'?'confirmed':'partial',...(result.error?{message:result.error.replace(/[\u0000-\u001f\u007f]/g,' ').slice(0,2000)}:{}),...(result.tokenTransfers?{transfers:result.tokenTransfers}:{})})
+}
+
 const initialState = {
   currentStep: 'metadata' as LaunchStep,
   metadata: null,
@@ -100,7 +110,11 @@ const initialState = {
 export const useLaunchStore = create<LaunchStore>((set, get) => ({
   ...initialState,
   setConfig: (config) => set((state) => ({ config: { ...state.config, ...config } })),
-  setBundleSettings: (bundleSettings) => set({bundleSettings:structuredClone(bundleSettings)}),
+  setBundleSettings: (bundleSettings) => set(state => {
+    const next=structuredClone(bundleSettings)
+    if(state.bundleSettings.mode==='block0'&&next.mode!=='block0')for(const wallet of next.wallets)delete wallet.transferTo
+    return {bundleSettings:next}
+  }),
   setReceipt: (receipt) => set({ receipt, transactionSignature: receipt.signatures[0] || null }),
 
   setStep: (step) => set({ currentStep: step }),

@@ -9,6 +9,8 @@ import {clearPendingIfMatching,type PendingLaunch} from '@/lib/launchHistory'
 import type {BundleResult} from '@/lib/bundler/types'
 import {checkLaunchSigners,clonePackets,packetMessage,runtimeBundles,validateInitialPackets} from './internal'
 import type {LaunchBundleExecutionOptions,PreparedLaunchBundle} from './model'
+import {assertLaunchTokenEvidence} from './transfers'
+import {publicLaunchBundleTransfers,publicLaunchBundleOutcome} from './receipt'
 export type {LaunchBundleExecutionOptions} from './model'
 
 /** Caller owns the canonical navigator lock for this entire reviewed run. */
@@ -18,8 +20,8 @@ export async function executePreparedLaunchBundle(prepared:PreparedLaunchBundle,
  if(options.approved!==true)throw new Error('Review and approve the complete launch before signing.')
  state.used=true
  const {input,review,ports,connection}=state
- let result:BundleResult={success:false,status:'failed',mintAddress:review.mint,buySignatures:[],bundleSellSignatures:[],submittedSignatures:[],creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing)},currentBroadcast=false,initialConfirmed=false,ownsRecord=false,pending:PendingLaunch|undefined
- const checkpoint=()=>options.onReceipt({...result,creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),buySignatures:[...(result.buySignatures??[])],submittedSignatures:[...(result.submittedSignatures??[])],...(result.submissions?{submissions:result.submissions.map(item=>({...item}))}:{})})
+ let result:BundleResult={success:false,status:'failed',mintAddress:review.mint,buySignatures:[],bundleSellSignatures:[],submittedSignatures:[],creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),...(review.transfers?.length?{tokenTransfers:publicLaunchBundleTransfers(review.transfers)}:{})},currentBroadcast=false,initialConfirmed=false,ownsRecord=false,pending:PendingLaunch|undefined
+ const checkpoint=()=>options.onReceipt({...result,creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),buySignatures:[...(result.buySignatures??[])],submittedSignatures:[...(result.submittedSignatures??[])],...(result.tokenTransfers?{tokenTransfers:publicLaunchBundleTransfers(result.tokenTransfers)}:{}),...(result.submissions?{submissions:result.submissions.map(item=>({...item}))}:{})})
  const check=()=>{if(options.approved!==true)throw new Error('Launch approval was withdrawn.');checkLaunchSigners(input,options);if(!ownsRecord)options.assertAvailable?.()}
  const progress=(message:string)=>{options.onProgress?.(message);check()}
  const freshInitial=async()=>{check();if(ports.now()>review.expiresAt)throw new Error('This launch preview expired. Prepare a fresh review.');if(!(await withTimeout(connection.isBlockhashValid(review.blockhash,{commitment:'confirmed'}))).value)throw new Error('The reviewed blockhash expired. Prepare again.');check()}
@@ -41,16 +43,17 @@ export async function executePreparedLaunchBundle(prepared:PreparedLaunchBundle,
   const signatures=signed.map(signedTransactionSignature),bytes=signed.map(tx=>Buffer.from(tx.serialize()).toString('base64'))
   const stable=(packets:readonly VersionedTransaction[])=>{ensureMessages(packets);if(packets.some((tx,index)=>Buffer.from(tx.serialize()).toString('base64')!==bytes[index]))throw new Error('A signed reviewed packet changed. Nothing new was sent.')}
   const simulationPackets=clonePackets(signed)
-  const simulation=await ports.simulate(connection,simulationPackets,{verifySignatures:true,payer:input.payer,accounts:[input.payer,...review.wallets.map(wallet=>wallet.publicKey)],signal:options.signal});check();stable(signed);stable(simulationPackets)
+  const simulation=await ports.simulate(connection,simulationPackets,{verifySignatures:true,payer:input.payer,accounts:[input.payer,...review.wallets.map(wallet=>wallet.publicKey)],...(state.tokenAccounts.length?{tokenAccounts:state.tokenAccounts.map(item=>({...item}))}:{}),signal:options.signal});check();stable(signed);stable(simulationPackets)
   if(!simulation.success||!simulation.walletDebitsLamports||simulation.walletDebitsLamports[input.payer]!==review.creatorDebitLamports||review.wallets.some(wallet=>simulation.walletDebitsLamports?.[wallet.publicKey]!==wallet.initialDebitLamports))throw new Error(simulation.error||'A reviewed wallet cost changed. Prepare again before sending.')
+  assertLaunchTokenEvidence(simulation,state.tokenAccounts)
   await freshInitial();stable(signed);stable(simulationPackets)
   const height=await withTimeout(connection.getBlockHeight('confirmed'));check()
   if(!Number.isSafeInteger(height)||height<0)throw new Error('The launch expiry boundary could not be verified.')
-  pending={mode:'standard',venue:'pump',mint:review.mint,payer:input.payer,blockhash:review.blockhash,signatures:[...signatures],submittedAt:new Date(ports.now()).toISOString(),expiresAfterBlockHeight:height+160,creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),bundleExecution:{mode:review.mode,buyerCount:review.wallets.length,status:'partial',message:'Review the original signatures in Activity. Browser-only actions do not resume after an interruption.'}}
+  pending={mode:'standard',venue:'pump',mint:review.mint,payer:input.payer,blockhash:review.blockhash,signatures:[...signatures],submittedAt:new Date(ports.now()).toISOString(),expiresAfterBlockHeight:height+160,creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),bundleExecution:{mode:review.mode,buyerCount:review.wallets.length,status:'partial',message:'Review the original signatures in Activity. Browser-only actions do not resume after an interruption.',...(review.transfers?.length?{transfers:publicLaunchBundleTransfers(review.transfers)}:{})}}
   const submissionPackets=clonePackets(signed)
   const onBroadcast=()=>{
    check();if(ports.now()>review.expiresAt)throw new Error('The launch preview expired before broadcast.');stable(signed);stable(simulationPackets);stable(submissionPackets)
-   options.onInitialBroadcast({...pending!,bundleExecution:{...pending!.bundleExecution!},creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),signatures:[...signatures]});ownsRecord=true
+   options.onInitialBroadcast({...pending!,bundleExecution:publicLaunchBundleOutcome(pending!.bundleExecution!),creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),signatures:[...signatures]});ownsRecord=true
    result={...result,status:'unknown',createSignature:signatures[0],submittedSignatures:[...signatures],submissions:signatures.map((signature,index)=>({signature,payer:state.policies[index].payer,blockhash:review.blockhash,expiresAfterBlockHeight:pending!.expiresAfterBlockHeight!,submittedAt:pending!.submittedAt}))};checkpoint()
    check();stable(signed);stable(simulationPackets);stable(submissionPackets);currentBroadcast=true
   }
@@ -64,7 +67,7 @@ export async function executePreparedLaunchBundle(prepared:PreparedLaunchBundle,
   const mintInfo=await withTimeout(connection.getAccountInfo(new PublicKey(review.mint),'confirmed'))
   if(!mintInfo||!mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID))throw new Error('The signatures confirmed but the selected Pump mint could not be verified. Check Activity.')
   await ports.verifyRouting(connection,parseResolvedCreatorFeeRouting(state.creatorPlan.routing),{payer:input.payer,mint:review.mint});check()
-  options.onInitialConfirmed({...pending,bundleExecution:{...pending.bundleExecution!},creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),signatures:[...signatures]})
+  options.onInitialConfirmed({...pending,bundleExecution:publicLaunchBundleOutcome(pending.bundleExecution!),creatorFeeRouting:parseResolvedCreatorFeeRouting(state.creatorPlan.routing),signatures:[...signatures]})
   initialConfirmed=true;currentBroadcast=false
   result={...result,status:'partial',...('bundleId' in receipt?{bundleId:receipt.bundleId}:{}),buySignatures:state.policies.flatMap((policy,index)=>policy.kind==='buyer-buy'?[signatures[index]]:[])};checkpoint()
   const confirmedAt=ports.now(),queue=review.followups.map(wallet=>({...wallet})).sort((a,b)=>input.settings.mode==='manual'?a.delaySeconds-b.delaySeconds:0)
