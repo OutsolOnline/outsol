@@ -66,4 +66,4 @@
 - [x] Execute native sales and Relay transfers with fresh fake-funded wallets against local Solana simulation, verify exact source/destination balances and durable receipts.
 - [x] Browser-check desktop/mobile, wallet generation, route persistence, scan/review/error/empty states and keyboard dialogs without live transactions.
 - [x] Independent whole-change review; fix concrete findings and rerun relevant checks.
-- [ ] Commit as OutSol, integrate current main without overwriting newer work, deploy through existing Railway pipeline, verify live routes and report limits.
+- [x] Commit as OutSol, integrate current main without overwriting newer work, deploy through existing Railway pipeline, verify live routes and report limits.
