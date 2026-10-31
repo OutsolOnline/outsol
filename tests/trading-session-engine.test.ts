@@ -30,6 +30,80 @@ function harness(patch:Partial<TradingSessionConfig>={}){
  return {connection,ports,config,signer,storage,sent,messages,waits,setAvailable:(value:boolean)=>{available=value},advance:(ms:number)=>{time+=ms},now:()=>time}
 }
 describe('bounded trading engine',()=>{
+ it('relays only each confirmed purchase, including the transfer reserve in the hard ceiling before signing',async()=>{
+  const relay={walletId:'recipient',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'},h=harness({relay,maxDebitSol:'0.05'})
+  const transfer=vi.fn(async(_connection:Connection,input:{amountRaw:string;source:string;destination:string;maxDebitLamports:string;guard:()=>void})=>{input.guard();expect(readTradePending(h.storage)).toBeNull();expect(readTradeHistory(h.storage)).toHaveLength(1);return {status:'confirmed' as const,signature:readTradeHistory(h.storage)[0].signature,debitLamports:'2044280'}})
+  h.ports.relay=transfer
+  const previous=h.ports.prepare;h.ports.prepare=async(...args)=>{const result=await previous(...args);result.position.tokenRaw='1000';return result}
+  const result=await new TradingSession(h.connection,h.config,h.ports).run(h.signer)
+  expect(h.sent).toHaveLength(1);expect(transfer).toHaveBeenCalledOnce()
+  expect(transfer.mock.calls[0][1]).toMatchObject({amountRaw:'100',source:payer,destination:relay.destination,maxDebitLamports:'10000000'})
+  expect(result.rows[0]).toMatchObject({status:'confirmed',relay:{status:'confirmed',amountRaw:'100',destination:relay.destination}})
+  expect(result.reservedDebitLamports).toBe('30005000')
+  const blocked=harness({relay,maxDebitSol:'0.025'}),sign=vi.fn(blocked.signer.sign)
+  blocked.ports.relay=transfer
+  await new TradingSession(blocked.connection,blocked.config,blocked.ports).run({...blocked.signer,sign})
+  expect(sign).not.toHaveBeenCalled();expect(blocked.sent).toHaveLength(0)
+ })
+ it('stops after an unknown Relay result while retaining the confirmed buy and public transfer identity',async()=>{
+  const h=harness({relay:{walletId:'recipient',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'},maxDebitSol:'0.1'})
+  h.ports.relay=async()=>({status:'unknown',signature:readTradeHistory(h.storage)[0].signature,debitLamports:'0',error:'Check original Relay transfer.'})
+  const result=await new TradingSession(h.connection,h.config,h.ports).run(h.signer)
+  expect(result.status).toBe('unknown');expect(h.sent).toHaveLength(1);expect(result.rows).toHaveLength(1)
+  expect(result.rows[0]).toMatchObject({status:'confirmed',relay:{status:'unknown',amountRaw:'100'}})
+  expect(readTradeHistory(h.storage)).toHaveLength(1);expect(result.message).toMatch(/Relay|transfer/i)
+ })
+ it('retains a durable Relay signature if transfer execution is interrupted, and never relays an inconsistent purchase amount',async()=>{
+  const relay={walletId:'recipient',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'},h=harness({relay,maxDebitSol:'0.1'})
+  h.ports.relay=async(_connection,input)=>{input.onChange?.({signature:readTradeHistory(h.storage)[0].signature,status:'submitted'});throw new Error('Relay connection interrupted')}
+  const result=await new TradingSession(h.connection,h.config,h.ports).run(h.signer)
+  expect(result.status).toBe('unknown');expect(result.rows[0].relay).toMatchObject({status:'unknown',signature:readTradeHistory(h.storage)[0].signature});expect(h.sent).toHaveLength(1)
+  const changed=harness({relay}),transfer=vi.fn();changed.ports.relay=transfer
+  const original=changed.ports.prepare;changed.ports.prepare=async(...args)=>({...await original(...args),tokenAmountRaw:'101'})
+  const refused=await new TradingSession(changed.connection,changed.config,changed.ports).run(changed.signer)
+  expect(refused.message).toMatch(/token amount|instruction/i);expect(changed.sent).toHaveLength(0);expect(transfer).not.toHaveBeenCalled()
+ })
+ it('does not relay a failed buy and preserves a confirmed buy when cancelled before the transfer',async()=>{
+  const relay={walletId:'recipient',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'}
+  const h=harness({relay}),transfer=vi.fn();h.ports.relay=transfer
+  h.ports.send=async(_connection,tx,opts)=>{opts.onBroadcast?.();const {signedTransactionSignature}=await import('../src/lib/transactions/send');return {status:'failed',signature:signedTransactionSignature(tx),submitted:true}}
+  await new TradingSession(h.connection,h.config,h.ports).run(h.signer);expect(transfer).not.toHaveBeenCalled()
+  const cancelled=harness({relay}),abort=new AbortController(),send=cancelled.ports.send;cancelled.ports.relay=transfer
+  cancelled.ports.send=async(...args)=>{const receipt=await send(...args);abort.abort();return receipt}
+  const result=await new TradingSession(cancelled.connection,cancelled.config,cancelled.ports).run({...cancelled.signer,signal:abort.signal})
+  expect(transfer).not.toHaveBeenCalled();expect(result.rows[0].status).toBe('confirmed');expect(readTradeHistory(cancelled.storage)).toHaveLength(1)
+  expect(result.status).toBe('stopped');expect(result.rows[0].relay).toMatchObject({status:'not-submitted',amountRaw:'100'});expect(result.message).toMatch(/tokens remain.*signing wallet/i)
+ })
+ it('reports an unsubmitted Relay when the buy confirms across the deadline or a confirmed-progress callback stops the session',async()=>{
+  for(const boundary of ['confirmation','confirmed-callback','relay-callback']){
+   const relay={walletId:'recipient',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'},h=harness({relay}),transfer=vi.fn(),abort=new AbortController()
+   h.ports.relay=transfer
+   const send=h.ports.send
+   if(boundary==='confirmation')h.ports.send=async(...args)=>{const result=await send(...args);h.advance(60001);return result}
+   const result=await new TradingSession(h.connection,h.config,h.ports).run({...h.signer,signal:abort.signal,onChange:journal=>{
+    if(boundary==='confirmed-callback'&&journal.rows[0]?.status==='confirmed')h.advance(60001)
+    if(boundary==='relay-callback'&&journal.phase==='relaying')abort.abort()
+   }})
+   expect(transfer,boundary).not.toHaveBeenCalled();expect(h.sent,boundary).toHaveLength(1)
+   expect(readTradeHistory(h.storage),boundary).toHaveLength(1);expect(readTradePending(h.storage),boundary).toBeNull()
+   expect(result.status,boundary).toBe('stopped');expect(result.rows[0],boundary).toMatchObject({status:'confirmed',relay:{status:'not-submitted',destination:relay.destination,amountRaw:'100'}})
+   expect(result.message,boundary).toMatch(/buy confirmed.*Relay.*not submitted/i);expect(result.message,boundary).toMatch(/tokens remain.*signing wallet/i)
+  }
+ })
+ it('does not lose the confirmed buy or downgrade uncertain Relay status when a public progress listener throws',async()=>{
+  for(const boundary of ['buy-confirmed','relay-unknown']){
+   const h=harness({relay:{walletId:'recipient',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'}}),transfer=vi.fn(async(_connection:Connection,input:{onChange?:(receipt:{signature:string;status:'unknown'})=>void})=>{
+    const signature=readTradeHistory(h.storage)[0].signature;input.onChange?.({signature,status:'unknown'});return {status:'unknown' as const,signature,debitLamports:'0'}
+   })
+   h.ports.relay=transfer
+   const result=await new TradingSession(h.connection,h.config,h.ports).run({...h.signer,onChange:journal=>{if(journal.rows[0]?.status==='confirmed'&&(boundary==='buy-confirmed'||journal.rows[0].relay?.status==='unknown'))throw new Error('Public progress listener unavailable')}})
+   expect(result.status,boundary).toBe(boundary==='buy-confirmed'?'stopped':'unknown')
+   expect(result.rows[0],boundary).toMatchObject({status:'confirmed',relay:{status:boundary==='buy-confirmed'?'not-submitted':'unknown'}})
+   expect(readTradeHistory(h.storage),boundary).toHaveLength(1);expect(readTradePending(h.storage),boundary).toBeNull()
+   if(boundary==='buy-confirmed'){expect(transfer).not.toHaveBeenCalled();expect(result.message).toMatch(/tokens remain.*signing wallet/i)}
+   else expect(result.rows[0].relay?.signature).toBeTruthy()
+  }
+ })
  it('prepares and signs fresh native messages, saves pending before send, and honors the total debit ceiling',async()=>{
   const h=harness();const original=h.ports.send
   h.ports.send=async(...args)=>{expect(readTradePending(h.storage)?.signature).toBeTruthy();return original(...args)}

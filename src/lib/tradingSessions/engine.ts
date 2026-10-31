@@ -49,7 +49,7 @@ export class TradingSession {
   this.#used=true
   const config=this.#config,ports=this.#ports,connection=this.#connection,armedAt=ports.now(),deadline=armedAt+config.durationMs,budget=solLamports(config.maxDebitSol)
   const journal:TradingSessionJournal={version:1,id:crypto.randomUUID(),config,status:'running',phase:'monitoring',armedAt,updatedAt:armedAt,reservedDebitLamports:'0',rows:[]}
-  const seen=new Set<string>();let baseline=false,submitted=false,pending:PendingTrade|null=null,active:TradingSessionRow|undefined
+  const seen=new Set<string>();let baseline=false,submitted=false,relayUncertain=false,pending:PendingTrade|null=null,active:TradingSessionRow|undefined
   const guard=(expected?:string)=>{
    assertSubmissionSigner(config.payer,signer.readSigner,signer.signal)
    if(ports.now()>=deadline)throw new TimeLimit('The approved session time limit was reached.')
@@ -77,10 +77,12 @@ export class TradingSession {
     const expectedBuy=input.action==='buy'?solLamports(input.buySol):0n,expectedSell=input.action==='sell'?amount(prepared.position.tokenRaw)*BigInt(input.sellPercent)/100n:0n
     if(amount(prepared.maxBuyLamports)!==expectedBuy||amount(prepared.maxSellRaw)!==expectedSell)throw new Error('The quoted buy ceiling or sell balance differs from the approved native preview.')
     if(message(prepared.transaction)!==prepared.message)throw new Error('The prepared message changed.')
-    inspectTradeIntent(prepared.transaction,input,amount(prepared.maxSellRaw))
+    const nativeIntent=inspectTradeIntent(prepared.transaction,input,amount(prepared.maxSellRaw))
+    if(input.action==='buy'&&(prepared.tokenAmountRaw!==nativeIntent.tokenAmountRaw||prepared.tokenChangeRaw!==nativeIntent.tokenAmountRaw))throw new Error('The purchased token amount differs from the exact native trade instruction.')
+    const relayReserve=config.relay?solLamports(config.relay.maxDebitSol):0n
     let debit=reserve(prepared,amount(prepared.networkFeeLamports),prepared.solChangeLamports.startsWith('-')?BigInt(prepared.solChangeLamports)*-1n:0n)
     const remaining=budget-amount(journal.reservedDebitLamports)
-    if(debit>remaining)throw new Error('The remaining session debit ceiling cannot cover this trade, its fee and account rent.')
+    if(debit+relayReserve>remaining)throw new Error('The remaining session debit ceiling cannot cover this trade, its fees, account rent and Relay reserve.')
     if(config.mode==='cap'){const freshQuote=await ports.readCurve(connection,mint,()=>guard());guard();assertCap(freshQuote.capLamports)}
     active.status='signing';journal.phase='signing';checkpoint();guard()
     const signed=await signer.sign(VersionedTransaction.deserialize(prepared.transaction.serialize()));guard()
@@ -95,13 +97,13 @@ export class TradingSession {
     const simulation=await ports.simulateSigned(connection,signed,prepared,()=>guard());guard()
     if(config.mode==='cap'){const freshQuote=await ports.readCurve(connection,mint,()=>guard());guard();assertCap(freshQuote.capLamports)}
     debit=reserve(prepared,amount(simulation.networkFeeLamports),amount(simulation.netDebitLamports))
-    if(amount(simulation.netDebitLamports)>debit||debit>remaining||debit>amount(simulation.walletBeforeLamports))throw new Error('The signed trade debit exceeds the wallet balance or remaining session ceiling.')
+    if(amount(simulation.netDebitLamports)>debit||debit+relayReserve>remaining||debit+relayReserve>amount(simulation.walletBeforeLamports))throw new Error('The signed trade and Relay reserve exceed the wallet balance or remaining session ceiling.')
     if(message(signed)!==prepared.message||signedTransactionSignature(signed)!==signature)throw new Error('The signed message or signature changed after simulation.')
     inspectTradeIntent(signed,input,amount(prepared.maxSellRaw));guard()
     pending={action:config.action,mint,payer:config.payer,signature,blockhash:signed.message.recentBlockhash,submittedAt:new Date(ports.now()).toISOString(),maxBuyLamports:prepared.maxBuyLamports,maxSellRaw:prepared.maxSellRaw,expiryBlockHeight:recovery.lastValidBlockHeight}
     saveTradePending(pending,ports.storage)
     guard(signature)
-    active.signature=signature;active.status='sending';active.debitReservedLamports=debit.toString();journal.reservedDebitLamports=(amount(journal.reservedDebitLamports)+debit).toString();journal.phase='sending';checkpoint();guard(signature)
+    active.signature=signature;active.status='sending';active.debitReservedLamports=(debit+relayReserve).toString();journal.reservedDebitLamports=(amount(journal.reservedDebitLamports)+debit+relayReserve).toString();journal.phase='sending';checkpoint();guard(signature)
     const receipt=await ports.send(connection,signed,{signal:signer.signal,onBroadcast:()=>{
      guard(signature)
      if(message(signed)!==prepared.message||signedTransactionSignature(signed)!==signature)throw new Error('The signed trade changed before broadcast.')
@@ -116,9 +118,31 @@ export class TradingSession {
     if(receipt.status==='unknown'){active.status='unknown';throw new Error(receipt.error||'Confirmation is unknown. The session stopped; check the original saved signature in Manage token.')}
     if(readTradePending(ports.storage)?.signature!==signature)throw new Error('The recovery record changed during confirmation. Preserve the original signature.')
     saveTradeReceipt(pending,receipt.status,receipt.error,ports.storage)
-    pending=null;submitted=false;active.status=receipt.status;checkpoint()
+    pending=null;submitted=false;active.status=receipt.status
+    // The buy and its follow-up transfer have separate outcomes. Record the
+    // outstanding transfer before callbacks, cancellation or deadline checks.
+    if(receipt.status==='confirmed'&&config.relay)active.relay={status:'not-submitted',destination:config.relay.destination,amountRaw:nativeIntent.tokenAmountRaw,debitReservedLamports:relayReserve.toString()}
+    checkpoint()
     if(receipt.status==='failed')throw new Error(receipt.error||'The trade failed on chain. No further trades were attempted.')
     if(stopped)throw stopped
+    if(config.relay){
+     guard()
+     active.relay={status:'preparing',destination:config.relay.destination,amountRaw:nativeIntent.tokenAmountRaw,debitReservedLamports:relayReserve.toString()}
+     journal.phase='relaying';checkpoint();guard()
+     const relay=ports.relay??(async(...args)=>{const {executeConfirmedBuyRelay}=await import('../relay/execute');return executeConfirmedBuyRelay(...args)})
+     relayUncertain=false
+     const transferred=await relay(connection,{source:config.payer,destination:config.relay.destination,mint,amountRaw:nativeIntent.tokenAmountRaw,maxDebitLamports:relayReserve.toString(),readSigner:signer.readSigner,sign:signer.sign,signal:signer.signal,guard:()=>guard(),storage:ports.storage,onChange:receipt=>{
+      if(!active?.relay)throw new Error('The active Relay journal changed.')
+      relayUncertain=receipt.status==='submitted'||receipt.status==='unknown'
+      active.relay={...active.relay,status:receipt.status==='submitted'?'preparing':receipt.status,signature:receipt.signature};checkpoint()
+     }})
+     relayUncertain=true
+     if(!['confirmed','failed','unknown'].includes(transferred.status)||amount(transferred.debitLamports)>relayReserve||(!transferred.signature&&transferred.status!=='failed')){relayUncertain=true;throw new Error('Relay returned an unverifiable result. Check its original transaction before continuing.')}
+     active.relay={...active.relay,status:transferred.status,...(transferred.signature?{signature:transferred.signature}:{}),...(transferred.error?{error:transferred.error}:{})};checkpoint()
+     relayUncertain=transferred.status==='unknown'
+     if(transferred.status!=='confirmed')throw new Error(transferred.error||`Relay transfer ${transferred.status}. The confirmed buy is preserved; no further trade was attempted.`)
+     guard()
+    }
    });guard()
   }
   try{
@@ -149,11 +173,18 @@ export class TradingSession {
    if(unsentPending&&!submitted){try{clearTradePending(unsentPending.signature,ports.storage)}catch{/* Preserve unreadable recovery storage; never retry. */}}
    if(active&&['preparing','signing','sending'].includes(active.status))active.status=submitted?'unknown':'not-submitted'
    if(active&&active.status!=='confirmed')active.error=errorText(error)
-   journal.status=submitted?'unknown':error instanceof TimeLimit?'completed':signer.signal?.aborted||signer.readSigner()!==config.payer?'stopped':'failed'
-   journal.message=errorText(error)
+   if(active?.relay?.status==='preparing'){active.relay.status=relayUncertain?'unknown':'not-submitted';active.relay.error=errorText(error)}
+   const unrelayed=active?.status==='confirmed'&&active.relay?.status==='not-submitted'
+   journal.status=submitted||relayUncertain?'unknown':unrelayed?'stopped':error instanceof TimeLimit?'completed':signer.signal?.aborted||signer.readSigner()!==config.payer?'stopped':'failed'
+   journal.message=unrelayed?`Buy confirmed; Relay was not submitted. The newly purchased tokens remain in the signing wallet. ${errorText(error)}`:errorText(error)
+   if(unrelayed&&active?.relay)active.relay.error=journal.message
   }
   journal.phase='idle'
-  try{checkpoint()}catch(error){journal.status=submitted?'unknown':'failed';journal.message=`${journal.message||''} ${errorText(error)}`.trim();signer.onChange?.(structuredClone(journal))}
+  try{checkpoint()}catch(error){
+   const unrelayed=active?.status==='confirmed'&&active.relay?.status==='not-submitted'
+   journal.status=submitted||relayUncertain?'unknown':unrelayed?'stopped':'failed';journal.message=`${journal.message||''} ${errorText(error)}`.trim()
+   try{signer.onChange?.(structuredClone(journal))}catch{/* A UI listener cannot erase the durable original transaction outcomes. */}
+  }
   return structuredClone(journal)
  }
 }

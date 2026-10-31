@@ -67,9 +67,11 @@ function validateCall(value: unknown): boolean {
         if (value === null) continue
         if (!value || typeof value !== 'object' || Array.isArray(value)) return false
         if (Object.keys(value).some(field => !['encoding', 'addresses'].includes(field))) return false
-        if (value.encoding !== 'base64' || !Array.isArray(value.addresses) || value.addresses.length > 20) return false
+        // A single market sale checks every writable account, including route
+        // vaults and owned token accounts. Keep multi-packet bundles narrower.
+        if (value.encoding !== 'base64' || !Array.isArray(value.addresses) || value.addresses.length > (transactions.length === 1 ? 64 : 20)) return false
         snapshotCount += value.addresses.length
-        if (snapshotCount > 40) return false
+        if (snapshotCount > (transactions.length === 1 ? 128 : 40)) return false
         try {
           for (const address of value.addresses) {
             if (typeof address !== 'string') return false

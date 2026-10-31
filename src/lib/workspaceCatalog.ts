@@ -5,6 +5,7 @@ export const LAUNCH_SHORTCUTS: { id: string; title: string; description: string;
   { id: 'pump', title: 'Pump.fun', description: 'Bonding curve launch with an optional first buy.', href: '/launch?mode=standard&venue=pump', mode: 'standard', venue: 'pump', accent: 'mint' },
 ]
 export const WORKSPACE_TOOLS: WorkspaceTool[] = [
+  {id:'relay',title:'Relay wallets',description:'Create source and recipient wallets, move token balances and review sales for a wallet or group.',href:'/relay',category:'Operate',icon:'Wallet',tags:['relay','sniper','wallet','recipient','sell all','group','tokens','migration']},
   {id:'extension',title:'Browser extension',description:'Capture a page, selection or image reference and review a fresh launch draft.',href:'/extension',category:'Prepare',icon:'Puzzle',tags:['chrome','edge','download','browser','extension','web','post']},
   {id:'x-launch',title:'Launch from X',description:'Import a public post or connect your account, then review a separate Pump.fun launch draft.',href:'/x',category:'Prepare',icon:'Radio',tags:['twitter','X','tweet','post','social','account','connect','rapidlaunch']},
   {id:'multi-launch',title:'Multi-launch',description:'Prepare two to five fresh Pump tokens and review the cost of every launch.',href:'/multi-launch',category:'Create',venue:'pump',icon:'Layers',tags:['multi','batch','deploy','duplicate','launch']},

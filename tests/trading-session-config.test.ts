@@ -6,6 +6,14 @@ import {readSessionHistory,saveSessionJournal,SESSION_HISTORY_KEY} from '../src/
 const base={version:1 as const,mode:'dca' as const,walletId:'library-wallet',payer:Keypair.generate().publicKey.toBase58(),action:'buy' as const,mint:Keypair.generate().publicKey.toBase58(),buySol:'0.01',sellPercent:25,maxTrades:2,intervalMs:5000,durationMs:60000,maxDebitSol:'0.05',slippage:5,priorityFeeSol:0.0001}
 function memory(){const values=new Map<string,string>();return {getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>{values.set(key,value)},removeItem:(key:string)=>{values.delete(key)}}}
 describe('bounded session approval',()=>{
+ it('binds an optional Relay recipient and transfer budget, rejecting self routes and sell sessions',()=>{
+  const relay={walletId:'recipient-wallet',destination:Keypair.generate().publicKey.toBase58(),maxDebitSol:'0.01'}
+  expect(validateSessionConfig({...base,relay})).toMatchObject({relay})
+  for(const patch of [{destination:base.payer},{walletId:base.walletId},{destination:'bad'},{maxDebitSol:'0'},{maxDebitSol:'1.1'}])expect(()=>validateSessionConfig({...base,relay:{...relay,...patch}})).toThrow()
+  expect(()=>validateSessionConfig({...base,action:'sell',relay})).toThrow(/buy|Relay/i)
+  expect(()=>validateSessionConfig({...base,relay:null})).toThrow(/Relay/i)
+  expect(validateSessionConfig(base)).not.toHaveProperty('relay')
+ })
  it('accepts only known initial modes from the discovery link',()=>{
   expect(sessionModeFromQuery('new-launch')).toBe('new-launch');expect(sessionModeFromQuery('cap')).toBe('cap')
   expect(sessionModeFromQuery('anything')).toBe('dca');expect(sessionModeFromQuery(['new-launch','cap'])).toBe('dca')

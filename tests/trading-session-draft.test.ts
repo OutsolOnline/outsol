@@ -8,6 +8,20 @@ function memory(){const values=new Map<string,string>();return {values,getItem:(
 const draft=()=>({form:{...DEFAULT_SESSION_FORM,mint},walletId:'wallet-one'})
 
 describe('public session configuration draft',()=>{
+ it('restores older drafts with Relay off and saves only public recipient settings for a newly approved route',()=>{
+  const storage=memory(),legacy={...draft().form} as Record<string,unknown>
+  for(const field of Object.keys(legacy).filter(key=>key.startsWith('relay')))delete legacy[field]
+  storage.setItem(SESSION_DRAFT_KEY,JSON.stringify({version:1,walletId:'wallet-one',form:legacy}))
+  expect(readSessionDraft(storage)?.form).toMatchObject({relayEnabled:'false',relayWalletId:'',relayDestination:'',relayMaxDebitSol:'0.01'})
+  const relayDestination=Keypair.generate().publicKey.toBase58(),form={...draft().form,relayEnabled:'true' as const,relayWalletId:'relay-recipient',relayDestination,relayMaxDebitSol:'0.005'}
+  saveSessionDraft({form,walletId:'wallet-one'},storage)
+  expect(readSessionDraft(storage)?.form).toEqual(form)
+  expect(sessionConfigFromForm(form,'wallet-one',payer)).toMatchObject({relay:{walletId:'relay-recipient',destination:relayDestination,maxDebitSol:'0.005'}})
+  expect(sessionFormIssues({...form,relayMaxDebitSol:'0'})).toHaveProperty('relayMaxDebitSol')
+  expect(sessionFormIssues({...form,relayWalletId:''})).toHaveProperty('relayWalletId')
+  expect(sessionFormIssues({...form,relayDestination:'bad'})).toHaveProperty('relayDestination')
+  expect(sessionFormIssues({...form,action:'sell'})).toHaveProperty('relayEnabled')
+ })
  it('round trips incomplete public settings without persisting approval, keys or execution state',()=>{
   const storage=memory()
   saveSessionDraft({...draft(),approved:true,running:true,privateKey:'private',signedPacket:'packet',form:{...draft().form,buySol:'',durationSeconds:'1.',secretKey:'secret'}} as never,storage)

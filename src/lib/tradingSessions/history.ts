@@ -1,7 +1,7 @@
 import {PublicKey} from '@solana/web3.js'
 import bs58 from 'bs58'
 import type {TradeStorage} from '@/lib/venues/tradeHistory'
-import {validateSessionConfig} from './config'
+import {validateSessionConfig,solLamports} from './config'
 import type {TradingSessionJournal,TradingSessionRow} from './types'
 export const SESSION_HISTORY_KEY='outsol-trading-sessions-v1'
 const target=(storage?:TradeStorage)=>{if(storage)return storage;if(typeof localStorage==='undefined')throw new Error('Session storage is unavailable.');return localStorage}
@@ -10,7 +10,7 @@ const time=(value:unknown)=>{if(typeof value!=='number'||!Number.isSafeInteger(v
 const obj=(value:unknown)=>{if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Invalid session record.');return value as Record<string,unknown>}
 function publicJournal(value:unknown):TradingSessionJournal {
  const input=obj(value)
- if(input.version!==1||typeof input.id!=='string'||!input.id||input.id.length>80||!['running','completed','stopped','failed','unknown'].includes(String(input.status))||!['idle','monitoring','preparing','signing','sending'].includes(String(input.phase))||!Array.isArray(input.rows)||input.rows.length>10)throw new Error('Invalid public session record.')
+ if(input.version!==1||typeof input.id!=='string'||!input.id||input.id.length>80||!['running','completed','stopped','failed','unknown'].includes(String(input.status))||!['idle','monitoring','preparing','signing','sending','relaying'].includes(String(input.phase))||!Array.isArray(input.rows)||input.rows.length>10)throw new Error('Invalid public session record.')
  const config=validateSessionConfig(input.config)
  const rows:TradingSessionRow[]=input.rows.map((value,index)=>{
   const row=obj(value)
@@ -18,6 +18,15 @@ function publicJournal(value:unknown):TradingSessionJournal {
   const result:TradingSessionRow={index,mint:new PublicKey(row.mint).toBase58(),action:row.action as 'buy'|'sell',status:row.status as TradingSessionRow['status'],debitReservedLamports:amount(row.debitReservedLamports),createdAt:time(row.createdAt)}
   if(row.signature!==undefined){if(typeof row.signature!=='string'||row.signature.length>88||bs58.decode(row.signature).length!==64)throw new Error('Invalid saved trade signature.');result.signature=row.signature}
   if(row.error!==undefined){if(typeof row.error!=='string')throw new Error('Invalid session error.');result.error=row.error.slice(0,500)}
+  if(row.relay!==undefined){
+   const relay=obj(row.relay)
+   if(!config.relay||row.action!=='buy'||row.status!=='confirmed'||!['preparing','confirmed','failed','unknown','not-submitted'].includes(String(relay.status))||relay.destination!==config.relay.destination||(relay.status==='confirmed'&&!relay.signature))throw new Error('Invalid public Relay result.')
+   const raw=amount(relay.amountRaw),reserved=amount(relay.debitReservedLamports)
+   if(BigInt(raw)<=0n||BigInt(reserved)!==solLamports(config.relay.maxDebitSol))throw new Error('The Relay amount or approved reserve changed.')
+   result.relay={status:relay.status as NonNullable<TradingSessionRow['relay']>['status'],destination:config.relay.destination,amountRaw:raw,debitReservedLamports:reserved}
+   if(relay.signature!==undefined){if(typeof relay.signature!=='string'||relay.signature.length>88||bs58.decode(relay.signature).length!==64)throw new Error('Invalid saved Relay signature.');result.relay.signature=relay.signature}
+   if(relay.error!==undefined){if(typeof relay.error!=='string')throw new Error('Invalid Relay error.');result.relay.error=relay.error.slice(0,500)}
+  }
   return result
  })
  const result:TradingSessionJournal={version:1,id:input.id,config,status:input.status as TradingSessionJournal['status'],phase:input.phase as TradingSessionJournal['phase'],armedAt:time(input.armedAt),updatedAt:time(input.updatedAt),reservedDebitLamports:amount(input.reservedDebitLamports),rows}

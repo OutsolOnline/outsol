@@ -19,7 +19,7 @@ const navigation = [
   { name: 'Activity', href: '/activity', icon: Activity },
   { name: 'Tools', href: '/tools', icon: Grid2X2 },
 ]
-const pageNames: Record<string, string> = { '/': 'OutSol', '/launches': 'Launches', '/launch': 'New launch', '/wallet-operations': 'Wallets', '/wallet': 'Wallets', '/library': 'Library', '/drafts': 'Saved designs', '/artwork': 'Artwork', '/activity': 'Activity', '/tools': 'Tools', '/planner': 'Launch planner', '/rehearse': 'Launch rehearsal', '/vanity': 'Vanity addresses', '/inspect': 'Wallet inspector', '/manage': 'Manage token', '/bundler': 'Wallet bundles', '/projects': 'Token workspaces', '/extension': 'Browser extension', '/x': 'Launch from X', '/tracker': 'X tracker', '/sniper': 'Launch discovery', '/automations': 'Trading sessions', '/multi-launch': 'Multi-launch' }
+const pageNames: Record<string, string> = { '/': 'OutSol', '/launches': 'Launches', '/launch': 'New launch', '/wallet-operations': 'Wallets', '/wallet': 'Wallets', '/library': 'Library', '/drafts': 'Saved designs', '/artwork': 'Artwork', '/activity': 'Activity', '/tools': 'Tools', '/planner': 'Launch planner', '/rehearse': 'Launch rehearsal', '/vanity': 'Vanity addresses', '/inspect': 'Wallet inspector', '/manage': 'Manage token', '/bundler': 'Wallet bundles', '/projects': 'Token workspaces', '/extension': 'Browser extension', '/x': 'Launch from X', '/tracker': 'X tracker', '/relay': 'Relay wallets', '/sniper': 'Launch discovery', '/automations': 'Trading sessions', '/multi-launch': 'Multi-launch' }
 
 export function Header() {
   const pathname = usePathname()
@@ -27,7 +27,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const currentPage = pageNames[pathname] ?? (pathname.startsWith('/token/') ? 'Token workspace' : pathname.startsWith('/verify/') ? 'Token verification' : 'OutSol')
-  const activeHref = ['/wallet', '/wallet-operations'].includes(pathname) ? '/wallet-operations' : ['/library', '/drafts', '/artwork'].includes(pathname) ? '/library' : pathname === '/activity' ? '/activity' : pathname === '/bundler' ? '/bundler' : ['/tools', '/vanity', '/inspect', '/manage', '/manual', '/extension', '/x', '/tracker', '/sniper', '/automations', '/multi-launch'].includes(pathname) ? '/tools' : '/launches'
+  const activeHref = ['/wallet', '/wallet-operations', '/relay'].includes(pathname) ? '/wallet-operations' : ['/library', '/drafts', '/artwork'].includes(pathname) ? '/library' : pathname === '/activity' ? '/activity' : pathname === '/bundler' ? '/bundler' : ['/tools', '/vanity', '/inspect', '/manage', '/manual', '/extension', '/x', '/tracker', '/sniper', '/automations', '/multi-launch'].includes(pathname) ? '/tools' : '/launches'
 
   useEffect(() => setMounted(true), [])
   useEffect(() => setMenuOpen(false), [pathname])

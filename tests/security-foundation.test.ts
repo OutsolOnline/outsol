@@ -104,7 +104,8 @@ describe('bounded Solana RPC proxy', () => {
     expect((await handler(call(config))).status).toBe(200)
     expect((await handler(call({ ...config, postExecutionAccountsConfigs: [{ encoding: 'base64', addresses: ['not-a-public-key'] }] }))).status).toBe(400)
     expect((await handler(call({ ...config, preExecutionAccountsConfigs: [{ encoding: 'base64', addresses: Array(20).fill(address) }], postExecutionAccountsConfigs: [{ encoding: 'base64', addresses: Array(20).fill(address) }] }))).status).toBe(200)
-    expect((await handler(call({ ...config, postExecutionAccountsConfigs: [{ encoding: 'base64', addresses: Array(21).fill(address) }] }))).status).toBe(400)
+    expect((await handler(call({ ...config, preExecutionAccountsConfigs: [{ encoding: 'base64', addresses: Array(64).fill(address) }], postExecutionAccountsConfigs: [{ encoding: 'base64', addresses: Array(64).fill(address) }] }))).status).toBe(200)
+    expect((await handler(call({ ...config, postExecutionAccountsConfigs: [{ encoding: 'base64', addresses: Array(65).fill(address) }] }))).status).toBe(400)
     const snapshot = { encoding: 'base64', addresses: Array(11).fill(address) }
     expect((await handler(request({ jsonrpc: '2.0', id: 1, method: 'simulateBundle', params: [{ encodedTransactions: ['AQ==','AQ=='] }, { ...config, preExecutionAccountsConfigs: [snapshot,snapshot], postExecutionAccountsConfigs: [snapshot,snapshot] }] }))).status).toBe(400)
     expect((await handler(call({ ...config, postExecutionAccountsConfigs: [{ encoding: 'base64', addresses: [address], overrides: {} }] }))).status).toBe(400)

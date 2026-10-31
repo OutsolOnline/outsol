@@ -7,9 +7,12 @@ export interface TradingSessionConfig {
  version:1; mode:'dca'|'cap'|'new-launch'; walletId:string; payer:string; action:'buy'|'sell'; mint?:string
  creator?:string; keyword?:string; buySol:string; sellPercent:number; maxTrades:number; intervalMs:number; durationMs:number
  maxDebitSol:string; slippage:number; priorityFeeSol:number; capDirection?:'at-or-above'|'at-or-below'; capSol?:string
+ relay?:{walletId:string;destination:string;maxDebitSol:string}
 }
-export interface TradingSessionRow {index:number;mint:string;action:'buy'|'sell';status:'preparing'|'signing'|'sending'|'confirmed'|'failed'|'unknown'|'not-submitted';debitReservedLamports:string;createdAt:number;signature?:string;error?:string}
-export interface TradingSessionJournal {version:1;id:string;config:TradingSessionConfig;status:'running'|'completed'|'stopped'|'failed'|'unknown';phase:'idle'|'monitoring'|'preparing'|'signing'|'sending';armedAt:number;updatedAt:number;reservedDebitLamports:string;rows:TradingSessionRow[];message?:string;lastCapLamports?:string}
+export interface SessionRelayResult {status:'confirmed'|'failed'|'unknown';signature:string;debitLamports:string;error?:string}
+export interface SessionRelayInput {source:string;destination:string;mint:string;amountRaw:string;maxDebitLamports:string;readSigner:()=>string|null|undefined;sign:(transaction:VersionedTransaction)=>Promise<VersionedTransaction>;signal?:AbortSignal;guard:()=>void;storage?:TradeStorage;onChange?:(receipt:{signature:string;status:'submitted'|'confirmed'|'failed'|'unknown'})=>void}
+export interface TradingSessionRow {index:number;mint:string;action:'buy'|'sell';status:'preparing'|'signing'|'sending'|'confirmed'|'failed'|'unknown'|'not-submitted';debitReservedLamports:string;createdAt:number;signature?:string;error?:string;relay?:{status:'preparing'|'confirmed'|'failed'|'unknown'|'not-submitted';destination:string;amountRaw:string;debitReservedLamports:string;signature?:string;error?:string}}
+export interface TradingSessionJournal {version:1;id:string;config:TradingSessionConfig;status:'running'|'completed'|'stopped'|'failed'|'unknown';phase:'idle'|'monitoring'|'preparing'|'signing'|'sending'|'relaying';armedAt:number;updatedAt:number;reservedDebitLamports:string;rows:TradingSessionRow[];message?:string;lastCapLamports?:string}
 export interface LaunchFeedItem {mint:string;name:string;symbol:string;creator:string;timestamp:number;signature:string}
 export interface LaunchFeed {status:'ready'|'unavailable';items:LaunchFeedItem[];fetchedAt:string;coverage:'recent-confirmed-transactions';warning?:string}
 export interface CurveQuote {capLamports:string;creator:string}
@@ -21,5 +24,6 @@ export interface SessionPorts {
  readCurve:(connection:Connection,mint:string,guard:()=>void)=>Promise<CurveQuote>;fetchFeed:()=>Promise<LaunchFeed>
  simulateSigned:(connection:Connection,transaction:VersionedTransaction,prepared:PreparedTrade,guard:()=>void)=>Promise<SignedTradePreview>
  send:(connection:Connection,transaction:VersionedTransaction,options:ConfirmationOptions)=>Promise<TransactionReceipt>
+ relay?:(connection:Connection,input:SessionRelayInput)=>Promise<SessionRelayResult>
  assertAvailable:()=>void;locks?:SessionLocks;storage?:TradeStorage
 }

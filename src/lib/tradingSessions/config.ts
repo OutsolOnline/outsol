@@ -25,6 +25,16 @@ export function validateSessionConfig(value:unknown):TradingSessionConfig {
  const buy=solLamports(input.buySol)
  if(input.action==='buy'&&(buy<=0n||buy>1_000_000_000_000n))throw new Error('Buy amount must be above 0 and no more than 1,000 SOL.')
  const result:TradingSessionConfig={version:1,mode:input.mode as TradingSessionConfig['mode'],walletId:input.walletId,payer,action:input.action as 'buy'|'sell',buySol:input.buySol as string,sellPercent,maxTrades,intervalMs,durationMs,maxDebitSol:input.maxDebitSol as string,slippage:input.slippage,priorityFeeSol:input.priorityFeeSol}
+ if(input.relay!==undefined){
+  if(!input.relay||typeof input.relay!=='object'||Array.isArray(input.relay)||result.action!=='buy')throw new Error('Relay is available only after confirmed buys.')
+  const relay=input.relay as Record<string,unknown>
+  if(typeof relay.walletId!=='string'||!relay.walletId.trim()||relay.walletId.length>100||relay.walletId===input.walletId)throw new Error('Choose a separate Relay recipient wallet.')
+  const destination=address(relay.destination,'Relay recipient')
+  if(destination===payer||!PublicKey.isOnCurve(new PublicKey(destination).toBytes()))throw new Error('Relay needs a different, ordinary recipient wallet.')
+  const relayBudget=solLamports(relay.maxDebitSol)
+  if(relayBudget<=0n||relayBudget>1_000_000_000n)throw new Error('The Relay fee and rent reserve must be above 0 and at most 1 SOL per transfer.')
+  result.relay={walletId:relay.walletId,destination,maxDebitSol:relay.maxDebitSol as string}
+ }
  if(result.mode==='new-launch') {
   if(result.action!=='buy')throw new Error('Confirmed launch detection supports buy sessions only.')
   if(input.creator!==undefined&&input.creator!=='')result.creator=address(input.creator,'exact creator filter')

@@ -1,4 +1,5 @@
 import bs58 from 'bs58'
+import {assertNoUnresolvedRelay} from '../relay/pendingGuard'
 import { publicAddress, type WalletOperationIntent } from './model'
 
 export const WALLET_OPERATION_PENDING_KEY = 'vanity-wallet-operation-pending-v1'
@@ -35,7 +36,7 @@ export function readPendingWalletOperation(storage?: WalletOperationStorage): Pe
   try { const raw = target(storage).getItem(WALLET_OPERATION_PENDING_KEY); if (!raw) return null; if (raw.length > 10000) throw new Error(); return pending(JSON.parse(raw)) }
   catch { throw new Error('Wallet recovery data cannot be read. Preserve browser data and check your last signature before sending again.') }
 }
-export function assertNoPendingWalletOperation(storage?: WalletOperationStorage) { if (readPendingWalletOperation(storage)) throw new Error('A wallet operation is pending confirmation. Open Wallet operations and check it before continuing.') }
+export function assertNoPendingWalletOperation(storage?: WalletOperationStorage) { if (readPendingWalletOperation(storage)) throw new Error('A wallet operation is pending confirmation. Open Wallet operations and check it before continuing.'); assertNoUnresolvedRelay(storage) }
 export function savePendingWalletOperation(input: PendingWalletOperation, storage?: WalletOperationStorage) {
   const storageTarget = target(storage), record = pending(input)
   assertNoPendingWalletOperation(storageTarget)

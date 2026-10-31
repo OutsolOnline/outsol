@@ -8,6 +8,7 @@ A focused Pump.fun workspace for Solana: token design, native creation, an optio
 
 ## What is supported
 
+- [Relay wallets and sales](docs/RELAY-WALLETS.md): generate encrypted source and recipient wallets, move reviewed token balances, and review individual-wallet or group sales into SOL. Sniper sessions can relay only their newly purchased tokens after a confirmed buy.
 - An animated product homepage, grouped tools menu and a separate Launches workspace with the approved OutSol identity.
 - Block-0, Organic and Manual wallet buys inside launch preparation, with reviewed budgets and exact native transaction plans.
 - Optional **Send bought tokens to** destinations for additional Block-0 buyers. Each configured buyer transfers its exact purchase output in the same transaction; the review includes recipient-account rent and full receiving addresses. Switching away from Block-0 clears these destinations.

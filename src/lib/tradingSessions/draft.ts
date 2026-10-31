@@ -7,8 +7,9 @@ export interface SessionForm {
  mode:TradingSessionConfig['mode'];action:'buy'|'sell';mint:string;creator:string;keyword:string;buySol:string;sellPercent:string
  maxTrades:string;intervalSeconds:string;durationSeconds:string;maxDebitSol:string;slippage:string;priorityFeeSol:string
  capDirection:'at-or-above'|'at-or-below';capSol:string
+ relayEnabled:'false'|'true';relayWalletId:string;relayDestination:string;relayMaxDebitSol:string
 }
-export const DEFAULT_SESSION_FORM:Readonly<SessionForm>={mode:'dca',action:'buy',mint:'',creator:'',keyword:'',buySol:'0.01',sellPercent:'25',maxTrades:'3',intervalSeconds:'20',durationSeconds:'180',maxDebitSol:'0.1',slippage:'5',priorityFeeSol:'0.0001',capDirection:'at-or-above',capSol:'100'}
+export const DEFAULT_SESSION_FORM:Readonly<SessionForm>={mode:'dca',action:'buy',mint:'',creator:'',keyword:'',buySol:'0.01',sellPercent:'25',maxTrades:'3',intervalSeconds:'20',durationSeconds:'180',maxDebitSol:'0.1',slippage:'5',priorityFeeSol:'0.0001',capDirection:'at-or-above',capSol:'100',relayEnabled:'false',relayWalletId:'',relayDestination:'',relayMaxDebitSol:'0.01'}
 export const SESSION_DRAFT_KEY='vanity-public-session-draft-v1'
 export interface SessionDraftInput {form:SessionForm;walletId:string}
 export interface SessionDraft extends SessionDraftInput {version:1}
@@ -32,11 +33,13 @@ function publicDraft(value:unknown):SessionDraft {
  if(!source||typeof source!=='object'||Array.isArray(source)||typeof input.walletId!=='string'||input.walletId.length>100)throw new Error('Invalid public session draft.')
  const candidate=source as Record<string,unknown>,form={} as SessionForm
  for(const key of Object.keys(DEFAULT_SESSION_FORM) as (keyof SessionForm)[]) {
-  const limit=key==='keyword'?80:key==='mint'||key==='creator'?44:24
-  if(typeof candidate[key]!=='string'||candidate[key].length>limit)throw new Error('Public setup contains an invalid or oversized field.')
-  Object.assign(form,{[key]:candidate[key]})
+  const limit=key==='relayWalletId'?100:key==='keyword'?80:key==='mint'||key==='creator'||key==='relayDestination'?44:24
+  const field=candidate[key]===undefined&&key.startsWith('relay')?DEFAULT_SESSION_FORM[key]:candidate[key]
+  if(typeof field!=='string'||field.length>limit)throw new Error('Public setup contains an invalid or oversized field.')
+  Object.assign(form,{[key]:field})
  }
  if(!isMode(form.mode)||!['buy','sell'].includes(form.action)||!['at-or-above','at-or-below'].includes(form.capDirection))throw new Error('Unsupported public session setup.')
+ if(form.relayEnabled!=='false'&&form.relayEnabled!=='true')throw new Error('Unsupported Relay setup.')
  return {version:1,form,walletId:input.walletId}
 }
 
@@ -95,11 +98,17 @@ export function sessionFormIssues(form:SessionForm):SessionFormIssues {
  decimal('slippage',50,'Slippage');decimal('priorityFeeSol',0.01,'Priority fee ceiling')
  if(action==='buy'&&!issues.buySol&&!issues.maxDebitSol&&solLamports(form.buySol)>solLamports(form.maxDebitSol))issues.maxDebitSol='The total debit ceiling must cover at least one buy, plus network fees and rent reserves.'
  if(form.mode==='cap')solAmount('capSol','Market-cap target')
+ if(form.relayEnabled==='true'){
+  if(action!=='buy')issues.relayEnabled='Relay runs only after confirmed buys.'
+  if(!form.relayWalletId.trim())issues.relayWalletId='Choose a Relay recipient from your wallet library.'
+  try{const destination=new PublicKey(form.relayDestination);if(!PublicKey.isOnCurve(destination.toBytes()))throw new Error()}catch{issues.relayDestination='Choose an ordinary Relay recipient wallet.'}
+  try{const reserve=solLamports(form.relayMaxDebitSol);if(reserve<=0n||reserve>1_000_000_000n)throw new Error();if(action==='buy'&&!issues.buySol&&!issues.maxDebitSol&&solLamports(form.buySol)+reserve>solLamports(form.maxDebitSol))issues.maxDebitSol='The total debit ceiling must include the buy and Relay fee/rent reserve.'}catch{issues.relayMaxDebitSol='Use a Relay fee and rent reserve above 0 and at most 1 SOL.'}
+ }
  return issues
 }
 export function sessionConfigFromForm(form:SessionForm,walletId:string,payer:string):TradingSessionConfig {
  const issue=Object.values(sessionFormIssues(form))[0]
  if(issue)throw new Error(issue)
  const action=form.mode==='new-launch'?'buy':form.action
- return validateSessionConfig({version:1,mode:form.mode,walletId,payer,action,mint:form.mint.trim(),creator:form.creator.trim(),keyword:form.keyword.trim(),buySol:action==='buy'?form.buySol:DEFAULT_SESSION_FORM.buySol,sellPercent:action==='sell'?Number(form.sellPercent):Number(DEFAULT_SESSION_FORM.sellPercent),maxTrades:form.mode==='cap'?1:Number(form.maxTrades),intervalMs:Number(form.intervalSeconds)*1000,durationMs:Number(form.durationSeconds)*1000,maxDebitSol:form.maxDebitSol,slippage:Number(form.slippage),priorityFeeSol:Number(form.priorityFeeSol),capDirection:form.capDirection,capSol:form.capSol})
+ return validateSessionConfig({version:1,mode:form.mode,walletId,payer,action,mint:form.mint.trim(),creator:form.creator.trim(),keyword:form.keyword.trim(),buySol:action==='buy'?form.buySol:DEFAULT_SESSION_FORM.buySol,sellPercent:action==='sell'?Number(form.sellPercent):Number(DEFAULT_SESSION_FORM.sellPercent),maxTrades:form.mode==='cap'?1:Number(form.maxTrades),intervalMs:Number(form.intervalSeconds)*1000,durationMs:Number(form.durationSeconds)*1000,maxDebitSol:form.maxDebitSol,slippage:Number(form.slippage),priorityFeeSol:Number(form.priorityFeeSol),capDirection:form.capDirection,capSol:form.capSol,...(form.relayEnabled==='true'?{relay:{walletId:form.relayWalletId,destination:form.relayDestination,maxDebitSol:form.relayMaxDebitSol}}:{})})
 }
