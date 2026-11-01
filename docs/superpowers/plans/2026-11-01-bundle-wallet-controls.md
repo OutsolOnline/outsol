@@ -54,4 +54,14 @@
 ### 5. Release
 
 - [x] Independent review and fixes; full tests, type checking, lint, production audit and build.
-- [ ] Push OutSol-authored commits, deploy Railway, verify health/access protection, publish screenshots and observed limitations.
+- [x] Push OutSol-authored commits, deploy Railway, verify health/access protection, publish screenshots and observed limitations.
+
+## Release evidence — 2026-11-01
+
+- Application commit: `2c4fb53ef0e13f83c6c6dd87bed546ecaee17b34`, authored by OutSol and pushed to the organization repository.
+- Railway deployment: `fc31bb43-f257-4e29-b071-88cd0c260576`, status SUCCESS. Hosted health returned 200; protected launch, bundle and Relay routes still redirect unauthenticated requests to /access.
+- Final suite: 973 passed, 87 opt-in or existing skips. Type checking, lint, production build and production dependency audit passed locally and in Railway's builder; audit reported zero production findings.
+- Six separate fake-funded Surfpool cases passed across inline/standalone and Block-0/Manual/Organic. Cold recovery, individual sales and the remaining-wallet sale batch completed with original on-chain minimums and zero final token balances. No real SOL spent.
+- Browser checks covered generation, masked bulk import, lock/unlock, empty scans, private JSON/Base58 downloads, keyboard Escape/focus restoration and responsive controls at 390, 768, 1440 and 1920 pixels. Browser file-picker automation was unavailable; local file parsing is unit-tested and the masked bulk-import path was exercised in the browser.
+- Accepted edge: explicitly deleting and reimporting an extra recipient under a new local library ID requires using global Wallets/Relay to select that restored wallet. Normal refresh, named-group edits and inline-to-Bundles receipt recovery preserve attachments.
+- Screenshots and sanitized simulated execution proof were saved to the chat's outputs folder. Temporary plain private-key test files were removed; encrypted disposable QA wallets remain local to the preview origin.
