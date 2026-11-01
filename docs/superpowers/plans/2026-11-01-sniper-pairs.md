@@ -15,7 +15,17 @@
 - [x] Pair actions presentation over existing RelayWorkspace: paired cards, copy addresses, per-side/both/all private backups, fresh balance scans, immutable pair transfer routes. Receiver sales use a hard allowlist at review and execution, with one receiver or selected receivers only. No generic source sale buttons in this view.
 - [x] Generate-pairs and reuse UI: count pairs rather than wallets, two encrypted wallets per pair, clear names, save all encrypted wallets even if public pairing fails. Pair existing library wallets and import via existing encrypted importer. Explicit separate deployer and launch-use controls; budgets and destination visible together. Preserve advanced legacy tools behind disclosure.
 - [x] Browser checks generation/export/refresh/reuse, receiver-only sale selection and desktop/mobile; meaningful unit/behavior checks, simulated execution acceptance, independent review, lint/type/build/audit.
-- [ ] OutSol-authored organization push, Railway deployment, health/access checks and final screenshots.
+- [x] OutSol-authored organization push, Railway deployment, health/access checks and final screenshots.
+
+## Verified release — 2026-11-01
+
+- Application commit `9a6d4870984de630ee5da9492f5694f3edbda2eb`, authored by OutSol and pushed to the public organization repository.
+- Railway deployment `9d0faaa7-8e47-4c3b-8738-b9ac82deb2da` succeeded; health returned 200 and unauthenticated launch/bundle routes still redirect to the intended access gate.
+- Full suite: 1,029 passed, 88 opt-in/existing skips. Type checking, lint, production build and production dependency audit passed. Audit reported zero production findings. Railway repeated the release gates without GitHub Actions.
+- Strict fake-SOL acceptance passed: two independent sniper/receiver pairs and a separate deployer, complete backup/parse/address rebinding, native buys forwarding to each receiver, individual and remaining-receiver sales, original signed minimums retained, both receivers empty afterward and source/deployer holdings unchanged during sales. No real SOL spent.
+- Browser checks passed for generating two pairs plus deployer, downloading all five exact keys, restoring into a separate local library with new IDs, preserving names/deployer after refresh, unlocking all five together, downloading the identical keys again, and scanning balances after unlock. Private test downloads were removed afterward. Responsive checks passed at 390, 768, 1440 and 1920 pixels.
+- Independent review found and verified fixes for manual-key preservation, stale history after unlock and unreadable pair-catalog state. Mixed-passphrase sessions may need separate wallet unlocks, as explained in the interface.
+- A clean source ZIP was generated from tracked files only, excluding local credentials, wallet files, dependencies and build files. The comparison report is a separate dated artifact; it is not part of the application runtime.
 
 ## Review focus
 
