@@ -14,7 +14,7 @@ import {withTimeout} from '../transactions/http'
 export type {SaleRequest} from './history'
 export interface SaleBatchOptions {slippageBps:number;priorityFeeLamports:string}
 export interface SaleBatchPorts {
- prepare:(connection:Connection,input:MarketSaleInput)=>Promise<PreparedMarketSale>
+ prepare:(connection:Connection,input:MarketSaleInput,reviewedMinimumSolOut?:string)=>Promise<PreparedMarketSale>
  assert:(plan:PreparedMarketSale,tx:VersionedTransaction)=>void
  simulateSigned:(connection:Connection,plan:PreparedMarketSale,tx:VersionedTransaction,guard:()=>void)=>Promise<{walletBeforeLamports:string;netDebitLamports:string;networkFeeLamports:string}>
  send:(connection:Connection,tx:VersionedTransaction,options:ConfirmationOptions)=>Promise<TransactionReceipt>
@@ -88,7 +88,7 @@ export async function executeSaleBatch(connection:Connection,review:SaleBatchRec
    for(const row of record.rows){
     if(row.status!=='ready')continue
     active=row;submitted=false;pending=null;guard(row);row.status='preparing';checkpoint();guard(row)
-    const prepared=await ports.prepare(connection,input(row,internal.options));guard(row);checkPlan(prepared,row,internal.options)
+    const prepared=await ports.prepare(connection,input(row,internal.options),row.minimumSolOut);guard(row);checkPlan(prepared,row,internal.options)
     if(BigInt(prepared.minimumSolOut)<BigInt(row.minimumSolOut!)||BigInt(prepared.maxDebitLamports)>BigInt(row.maxDebitLamports!))throw new Error('The market moved beyond the reviewed minimum output or fee ceiling. Review a fresh sale.')
     ports.assert(prepared,prepared.transaction)
     if(prepared.createdAt>ports.now()||ports.now()-prepared.createdAt>60_000)throw new Error('The fresh sale packet expired before signing.')

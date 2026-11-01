@@ -15,6 +15,7 @@ import { BUNDLE_RECEIPT_KEY, assertNoPendingBundleReceipt, guardedBundleReceiptS
 import {assertNoPendingGroupOperation} from '@/lib/walletGroups/history'
 import {useWalletLibraryStore} from '@/stores/walletLibraryStore'
 import {createManagedBundleSource,type BundleSigners} from '@/lib/bundler/managedSource'
+import {mergeManagedBundleWallets} from '@/lib/bundler/walletSetup'
 import {applyBundleSettings,type BundleSettings} from '@/lib/bundler/presets'
 import {type CreatorFeeSelection} from '@/lib/creatorFeeRouting'
 import {verifyCreatorFeeRoutingOnChain} from '@/lib/creatorFeeRecovery'
@@ -50,6 +51,7 @@ interface BundlerStore extends BundlerConfig {
   
   // Actions - Bundle wallets
   setBundleWalletPrivateKey: (index: number, key: string) => void
+  setBundleWalletTransferTo: (index: number, address: string | undefined) => void
   setBundleWalletBuyAmount: (index: number, amount: number) => void
   setBundleWalletMode: (index: number, mode: WalletMode) => void
   setBundleWalletDelay: (index: number, seconds: number) => void
@@ -219,11 +221,10 @@ export const useBundlerStore = create<BundlerStore>()(persist((set, get) => ({
     const creator=library.wallets.find(wallet=>wallet.id===(creatorId??group.walletIds[0]))
     if(!creator||!group.walletIds.includes(creator.id)){set({statusMessage:'Choose a creator from this group.'});return}
     const buyers=group.walletIds.filter(id=>id!==creator.id).slice(0,MAX_BUNDLE_WALLETS)
-    const current=get().bundleWallets
-    const bundleWallets=createEmptyWallets().map((wallet,index)=>{
-      const summary=library.wallets.find(value=>value.id===buyers[index])
-      return {...wallet,...(current[index]?{buyAmount:current[index].buyAmount,mode:current[index].mode,delaySeconds:current[index].delaySeconds,sellEnabled:current[index].sellEnabled,sellPercent:current[index].sellPercent,sellDelaySeconds:current[index].sellDelaySeconds}:{}),...(summary?{libraryWalletId:summary.id,publicKey:summary.publicKey,isValid:true}:{buyAmount:0,sellEnabled:false})}
-    })
+    const members=[creator,...buyers.map(id=>library.wallets.find(wallet=>wallet.id===id)).filter((wallet):wallet is NonNullable<typeof wallet>=>!!wallet)]
+    let bundleWallets:BundleWallet[]
+    try{bundleWallets=mergeManagedBundleWallets(get().bundleWallets,members,creator.id)}
+    catch(error){set({statusMessage:error instanceof Error?error.message:'The wallet group changed. Review it again.'});return}
     set({managedGroupId:group.id,managedCreatorWalletId:creator.id,creatorPrivateKey:'',creatorPublicKey:creator.publicKey,creatorBalance:null,bundleWallets,statusMessage:'Managed group selected. Unlock its wallets in Wallets before execution.'})
   },
   useManualWallets:()=>{
@@ -274,6 +275,13 @@ export const useBundlerStore = create<BundlerStore>()(persist((set, get) => ({
     }
     
     set({ bundleWallets: newWallets })
+  },
+
+  setBundleWalletTransferTo: (index, address) => {
+    if(get().isExecuting)return
+    const wallets=get().bundleWallets
+    if(!Number.isInteger(index)||index<0||index>=wallets.length)return
+    set({bundleWallets:wallets.map((wallet,position)=>position===index?{...wallet,transferTo:address?.trim()||undefined}:wallet)})
   },
 
   setBundleWalletBuyAmount: (index, amount) => {

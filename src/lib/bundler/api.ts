@@ -6,7 +6,7 @@ import {getRpcEndpoint} from '@/lib/rpc'
 import {buildCreateTransaction,buildSellTransaction,buildNativeBuyTransaction,buildFreshNativeBuy,solToLamports} from '@/lib/pumpfun/api'
 import {sendAndConfirmTransaction,signedTransactionSignature,throwIfAborted} from '@/lib/transactions/send'
 import {withTimeout} from '@/lib/transactions/http'
-import {createVerifiedJitoTipTransaction,submitAtomicBundle} from './jito'
+import {createVerifiedJitoTipTransaction,submitAtomicBundle,simulateAtomicBundle} from './jito'
 import type {BundlerConfig,BundleResult,BundleWallet} from './types'
 import {assertNoPendingWalletOperation} from '@/lib/walletOperations/history'
 import {assertNoPendingGroupOperation} from '@/lib/walletGroups/history'
@@ -16,6 +16,8 @@ import {fetchGitHubIndividual} from '@/lib/githubRecipient'
 import {verifyCreatorFeeRoutingOnChain} from '@/lib/creatorFeeRecovery'
 import {validatePumpLaunchPlan} from '@/lib/transactions/validatePumpLaunchPlan'
 import {validatePumpTransaction} from '@/lib/transactions/validatePumpTransaction'
+import {composeNativeBuyTransfer,validateComposedNativeBuy,nativeBuyOutput,launchTokenExpectations,assertLaunchTokenEvidence,type NativeBuyTransferPolicy} from '@/lib/launchBundle/transfers'
+import {publicLaunchBundleTransfers,type LaunchBundleTransfer} from '@/lib/launchBundle/receipt'
 
 export function validatePrivateKey(input:string):{valid:boolean;keypair?:Keypair;error?:string} {
   try {
@@ -60,6 +62,10 @@ export function validateBundleConfig(config:BundlerConfig,signers?:BundleSigners
     if(wallet.publicKey&&wallet.publicKey!==identity)throw new Error(`Wallet ${wallet.id} signer changed`)
     if (identities.has(identity)) throw new Error('Every bundle wallet must have a unique identity; duplicate wallet found')
     identities.add(identity)
+    if(wallet.transferTo!==undefined){
+      try{if(typeof wallet.transferTo!=='string'||new PublicKey(wallet.transferTo).toBase58()!==wallet.transferTo||!PublicKey.isOnCurve(new PublicKey(wallet.transferTo).toBytes())||wallet.transferTo===identity)throw new Error()}catch{throw new Error('Choose an ordinary receiving wallet different from the buyer for Relay.')}
+      if(wallet.sellEnabled)throw new Error('This routed buyer cannot schedule a source-wallet sell. Manage the Relay recipient instead.')
+    }
     if (!Number.isFinite(wallet.delaySeconds) || wallet.delaySeconds<0 || wallet.delaySeconds>3600) throw new Error('Buy delay must be 0–3600 seconds')
     if (wallet.sellEnabled) validateSell(wallet.sellTriggerType,wallet.sellDelaySeconds,wallet.sellPercent)
   }
@@ -110,7 +116,7 @@ async function waitUntil(timestamp:number,signal?:AbortSignal) {
 /** Native protocol builders; private keys remain in memory and never leave this browser. */
 export async function executeBundleLaunch(config:BundlerConfig,onProgress:(status:string)=>void,options:ExecutionOptions={}):Promise<BundleResult> {
   let result:BundleResult={success:false,status:'failed',buySignatures:[],bundleSellSignatures:[],submittedSignatures:[]}
-  const checkpoint=()=>options.onReceipt?.({...result,buySignatures:[...(result.buySignatures??[])],submittedSignatures:[...(result.submittedSignatures??[])]})
+  const checkpoint=()=>options.onReceipt?.({...result,buySignatures:[...(result.buySignatures??[])],submittedSignatures:[...(result.submittedSignatures??[])],...(result.submissions?{submissions:result.submissions.map(item=>({...item}))}:{}),...(result.tokenTransfers?{tokenTransfers:publicLaunchBundleTransfers(result.tokenTransfers)}:{})})
   let expectedSigners:BundleSigners|undefined
   const checkCancelled=()=>{
     throwIfAborted(options.signal);assertNoPendingWalletOperation();assertNoPendingGroupOperation()
@@ -121,11 +127,12 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
   }
   const progress=(message:string)=>{onProgress(message);checkCancelled()}
   try {
+    config={...config,bundleWallets:config.bundleWallets.map(wallet=>({...wallet}))}
     checkCancelled()
     const initialSigners=options.resolveSigners?.()
     validateBundleConfig(config,initialSigners)
     const creator=initialSigners?.creator??requireKey(config.creatorPrivateKey,'creator')
-    const wallets=config.bundleWallets.filter(wallet=>wallet.buyAmount>0).map(wallet=>({wallet,key:initialSigners?.wallets.get(wallet.id)??requireKey(wallet.privateKey,`wallet ${wallet.id}`)}))
+    const wallets=config.bundleWallets.filter(wallet=>wallet.buyAmount>0).map(wallet=>({wallet:{...wallet},key:initialSigners?.wallets.get(wallet.id)??requireKey(wallet.privateKey,`wallet ${wallet.id}`)}))
     expectedSigners={creator,wallets:new Map(wallets.map(({wallet,key})=>[wallet.id,key]))}
     let mint:Keypair
     if (config.mintMode==='import') mint=requireKey(config.importedMintKey,'mint')
@@ -133,6 +140,12 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
     else if (config.mintMode==='pumpfun') throw new Error('Generate a vanity mint first or choose a random mint')
     else mint=Keypair.generate()
     const connection=options.connection??new Connection(getRpcEndpoint(),'confirmed')
+    const submissionContexts=async(packets:readonly VersionedTransaction[])=>{
+      const height=await withTimeout(connection.getBlockHeight('confirmed'));checkCancelled()
+      if(!Number.isSafeInteger(height)||height<0)throw new Error('The transaction expiry boundary cannot be verified. Nothing new was submitted.')
+      const submittedAt=new Date().toISOString()
+      return packets.map(packet=>({signature:signedTransactionSignature(packet),payer:packet.message.staticAccountKeys[0].toBase58(),blockhash:packet.message.recentBlockhash,expiresAfterBlockHeight:height+160,submittedAt}))
+    }
     const mintAddress=mint.publicKey.toBase58()
     result={...result,mintAddress}
     progress('Checking wallet funds and launch settings…')
@@ -158,6 +171,14 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
     if(JSON.stringify(create.launchPlan.routing)!==JSON.stringify(routing)||create.launchPlan.maxBuyLamports!==solToLamports(config.devBuyAmount).toString()||create.launchPlan.metadata.name!==config.tokenName||create.launchPlan.metadata.symbol!==config.tokenSymbol||create.launchPlan.metadata.uri!==create.metadataUri||create.launchPlan.requiresAtomicBundle!==!!create.requiresAtomicBundle||create.launchPlan.jitoTipLamports!==(create.jitoTipLamports??'0')||BigInt(create.launchPlan.jitoTipLamports)>solToLamports(config.jitoTip)||create.nativeContext.curve.creator.toBase58()!==routing.effectiveCreator)throw new Error('The native plan or buyer context differs from the reviewed route, metadata or budgets')
     validatePumpLaunchPlan({...create.launchPlan,packets:createPackets})
     result={...result,creatorFeeRouting:routing}
+    const buyPolicy=(wallet:BundleWallet,key:Keypair):NativeBuyTransferPolicy=>({action:'buy',payer:key.publicKey,mint:mint.publicKey,maxSolLamports:solToLamports(wallet.buyAmount),maxPriorityFeeLamports:500_000n,expectedBuyCreator:routing.effectiveCreator,protocolFeeRecipients:create.launchPlan!.protocolFeeRecipients})
+    const composed=(native:VersionedTransaction,wallet:BundleWallet,key:Keypair)=>{
+      const policy=buyPolicy(wallet,key)
+      validatePumpTransaction(native,policy)
+      if(!wallet.transferTo)return{transaction:native,policy}
+      const output=nativeBuyOutput(native,policy),transfer=publicLaunchBundleTransfers([{walletId:wallet.libraryWalletId||`bundle-${wallet.id}`,payer:key.publicKey.toBase58(),recipient:wallet.transferTo,mint:mintAddress,tokenProgram:output.tokenProgram,rawAmount:output.rawAmount,decimals:6}])[0]
+      return{transaction:composeNativeBuyTransfer(native,transfer,policy),native,transfer,policy}
+    }
     const immediate=wallets.filter(({wallet})=>wallet.mode==='sniper')
     const delayed=wallets.filter(({wallet})=>wallet.mode==='delayed')
     let launchTime:number
@@ -172,18 +193,19 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
       const appendTip=config.sniperMode==='block0'
       if(launchPackets.length+atomicBuyers.length+Number(appendTip)>5)throw new Error(`This recipient and metadata need ${launchPackets.length} launch packets; atomic mode supports at most ${4-launchPackets.length} additional buyers. Shorten metadata, move buyers to delayed mode, remove the first buy, or deliberately choose another recipient.`)
       const transactions=[...launchPackets]
+      const buyerPlans:ReturnType<typeof composed>[]=[]
       const signers:Keypair[][]=launchPackets.map((_,index)=>index===0?[creator,mint]:[creator])
       let context=create.nativeContext
       for (const {wallet,key} of atomicBuyers) {
         checkCancelled()
         const built=await buildFreshNativeBuy({context,mint:mint.publicKey,payer:key.publicKey,metadata:{name:config.tokenName,symbol:config.tokenSymbol,uri:create.metadataUri},maxBuyLamports:solToLamports(wallet.buyAmount),blockhash:createPackets[0].message.recentBlockhash})
         checkCancelled()
-        context=built.context;transactions.push(built.transaction);signers.push([key])
-        validatePumpTransaction(built.transaction,{action:'buy',payer:key.publicKey,mint:mint.publicKey,maxSolLamports:solToLamports(wallet.buyAmount),expectedBuyCreator:routing.effectiveCreator})
+        context=built.context;const plan=composed(built.transaction,wallet,key);buyerPlans.push(plan);transactions.push(plan.transaction);signers.push([key])
       }
       const {blockhash}=await withTimeout(connection.getLatestBlockhash('confirmed'))
       checkCancelled()
       transactions.forEach(tx=>{tx.message.recentBlockhash=blockhash})
+      buyerPlans.forEach(plan=>{if(plan.native)plan.native.message.recentBlockhash=blockhash})
       if(appendTip){
         transactions.push(separateTip?createPackets.at(-1)!:await createVerifiedJitoTipTransaction(connection,creator.publicKey,blockhash,Number(solToLamports(config.jitoTip))))
         transactions.at(-1)!.message.recentBlockhash=blockhash
@@ -193,15 +215,24 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
       validateLaunch()
       transactions.forEach((tx,index)=>{checkCancelled();tx.sign(signers[index]);checkCancelled()})
       const signedBytes=transactions.map(tx=>Buffer.from(tx.serialize()).toString('base64'))
-      const assertStable=()=>{validateLaunch();if(transactions.some((tx,index)=>Buffer.from(tx.serialize()).toString('base64')!==signedBytes[index]))throw new Error('A signed bundle packet changed. Nothing new was sent.')}
+      const assertStable=()=>{validateLaunch();buyerPlans.forEach(plan=>plan.transfer?validateComposedNativeBuy(plan.transaction,plan.native!,plan.transfer,plan.policy):validatePumpTransaction(plan.transaction,plan.policy));if(transactions.some((tx,index)=>Buffer.from(tx.serialize()).toString('base64')!==signedBytes[index]))throw new Error('A signed bundle packet changed. Nothing new was sent.')}
+      const transfers=buyerPlans.flatMap(plan=>plan.transfer?[plan.transfer]:[])
+      if(transfers.length){
+        const purchases=[{owner:creator.publicKey.toBase58(),rawAmount:create.launchPlan.firstBuyTokenAmountRaw,tokenProgram:create.nativeContext.tokenProgram.toBase58()},...buyerPlans.map(plan=>{const output=nativeBuyOutput(plan.native??plan.transaction,plan.policy);return{owner:new PublicKey(plan.policy.payer).toBase58(),...output}})]
+        const tokenAccounts=launchTokenExpectations(mintAddress,purchases,transfers)
+        const simulation=await simulateAtomicBundle(connection,transactions.map(tx=>VersionedTransaction.deserialize(tx.serialize())),{verifySignatures:true,accounts:[creator.publicKey.toBase58(),...atomicBuyers.map(({key})=>key.publicKey.toBase58())],tokenAccounts:tokenAccounts.map(item=>({...item})),signal:options.signal})
+        checkCancelled();assertStable();if(!simulation.success)throw new Error(simulation.error||'The signed Relay bundle could not be simulated.');assertLaunchTokenEvidence(simulation,tokenAccounts)
+        for(const {wallet,key} of atomicBuyers){const debit=simulation.walletDebitsLamports?.[key.publicKey.toBase58()];if(typeof debit!=='string'||!/^[0-9]+$/.test(debit)||BigInt(debit)>solToLamports(wallet.buyAmount)+5_000_000n)throw new Error('An atomic Relay buy exceeds its approved purchase, network and recipient rent reserve.')}
+      }
       const before=result
       const signatures=transactions.map(signedTransactionSignature)
+      const submissions=await submissionContexts(transactions);checkCancelled();assertStable()
       progress('Submitting once to Jito and checking every signature…')
       checkCancelled()
       const receipt=await submitAtomicBundle(connection,transactions,{endpoint:options.bundleEndpoint,signal:options.signal,onBroadcast:()=>{
         checkCancelled()
         assertStable()
-        result={...result,status:'unknown',createSignature:signatures[0],submittedSignatures:signatures}
+        result={...result,status:'unknown',createSignature:signatures[0],submittedSignatures:signatures,submissions,...(transfers.length?{tokenTransfers:publicLaunchBundleTransfers(transfers)}:{})}
         checkpoint()
       }})
       if(receipt.submitted===false) result=before
@@ -219,13 +250,14 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
       checkCancelled()
       const before=result
       const signature=signedTransactionSignature(create.transaction)
+      const submissions=await submissionContexts([create.transaction]);checkCancelled()
       progress('Submitting launch once and waiting for confirmation…')
       checkCancelled()
       const receipt=await sendAndConfirmTransaction(connection,create.transaction,{signal:options.signal,onBroadcast:()=>{
         checkCancelled()
         validatePumpLaunchPlan({...create.launchPlan!,packets:[create.transaction!]})
         if(Buffer.from(create.transaction!.serialize()).toString('base64')!==signedBytes)throw new Error('The signed launch changed. Nothing new was sent.')
-        result={...result,status:'unknown',createSignature:signature,submittedSignatures:[signature]}
+        result={...result,status:'unknown',createSignature:signature,submittedSignatures:[signature],submissions}
         checkpoint()
       }})
       if(receipt.submitted===false) result=before
@@ -243,15 +275,25 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
       progress(`Browser action: waiting to buy from wallet ${wallet.id}… Keep this page open.`)
       await waitUntil(due,options.signal)
       checkCancelled()
-      const tx=await buildNativeBuyTransaction({connection,userPublicKey:key.publicKey.toBase58(),mintAddress,maxBuyAmountSol:wallet.buyAmount,slippage:config.slippage})
+      const nativeBuy=await buildNativeBuyTransaction({connection,userPublicKey:key.publicKey.toBase58(),mintAddress,maxBuyAmountSol:wallet.buyAmount,slippage:config.slippage})
       checkCancelled()
+      const plan=composed(nativeBuy,wallet,key),tx=plan.transaction
       tx.sign([key])
       checkCancelled()
+      const signedBytes=Buffer.from(tx.serialize()).toString('base64'),stable=()=>{if(plan.transfer)validateComposedNativeBuy(tx,plan.native!,plan.transfer,plan.policy);else validatePumpTransaction(tx,plan.policy);if(Buffer.from(tx.serialize()).toString('base64')!==signedBytes)throw new Error('The signed buyer packet changed. Nothing new was sent.')}
+      if(plan.transfer){
+        const transfer=plan.transfer,tokenAccounts=launchTokenExpectations(mintAddress,[{owner:key.publicKey.toBase58(),rawAmount:transfer.rawAmount,tokenProgram:transfer.tokenProgram}],[transfer])
+        const simulation=await simulateAtomicBundle(connection,[VersionedTransaction.deserialize(tx.serialize())],{verifySignatures:true,accounts:[key.publicKey.toBase58()],tokenAccounts:tokenAccounts.map(item=>({...item})),signal:options.signal});checkCancelled();stable()
+        if(!simulation.success)throw new Error(simulation.error||'The signed Relay buy could not be simulated.');assertLaunchTokenEvidence(simulation,tokenAccounts)
+        const debit=simulation.walletDebitsLamports?.[key.publicKey.toBase58()]
+        if(typeof debit!=='string'||!/^[0-9]+$/.test(debit)||BigInt(debit)>solToLamports(wallet.buyAmount)+5_000_000n)throw new Error('The Relay buy exceeds its approved purchase, network and recipient rent reserve.')
+      }
       const before=result
       const signature=signedTransactionSignature(tx)
+      const submissions=await submissionContexts([tx]);checkCancelled();stable()
       const receipt=await sendAndConfirmTransaction(connection,tx,{signal:options.signal,onBroadcast:()=>{
-        checkCancelled()
-        result={...result,submittedSignatures:[...(result.submittedSignatures??[]),signature],status:'unknown'};checkpoint()
+        checkCancelled();stable()
+        result={...result,submittedSignatures:[...(result.submittedSignatures??[]),signature],submissions:[...(result.submissions??[]),...submissions],status:'unknown',...(plan.transfer?{tokenTransfers:publicLaunchBundleTransfers([...(result.tokenTransfers??[]),plan.transfer])}:{})};checkpoint();checkCancelled();stable()
       }})
       if(receipt.submitted===false) {
         result={...before,status:before.createSignature?'partial':'failed',error:receipt.error};checkpoint();return result
@@ -273,9 +315,11 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
       checkCancelled()
       const before=result
       const signature=signedTransactionSignature(built.transaction)
+      const signedBytes=Buffer.from(built.transaction.serialize()).toString('base64'),submissions=await submissionContexts([built.transaction]);checkCancelled()
       const receipt=await sendAndConfirmTransaction(connection,built.transaction,{signal:options.signal,onBroadcast:()=>{
         checkCancelled()
-        result={...result,submittedSignatures:[...(result.submittedSignatures??[]),signature],status:'unknown'};checkpoint()
+        if(Buffer.from(built.transaction!.serialize()).toString('base64')!==signedBytes)throw new Error('The signed sale changed before broadcast. Nothing new was sent.')
+        result={...result,submittedSignatures:[...(result.submittedSignatures??[]),signature],submissions:[...(result.submissions??[]),...submissions],status:'unknown'};checkpoint()
       }})
       if(receipt.submitted===false) {
         result={...before,status:before.createSignature?'partial':'failed',error:receipt.error};checkpoint();return result

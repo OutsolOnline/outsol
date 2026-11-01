@@ -13,6 +13,18 @@ async function fixture(){
 }
 const rebuild=(tx:VersionedTransaction,change:(instructions:ReturnType<typeof TransactionMessage.decompile>['instructions'])=>void)=>{const msg=TransactionMessage.decompile(tx.message);change(msg.instructions);return new VersionedTransaction(new TransactionMessage({payerKey:msg.payerKey,recentBlockhash:msg.recentBlockhash,instructions:msg.instructions}).compileToV0Message())}
 describe('narrow native buy and transfer policy',()=>{
+ it('accepts the official native recipe when the buyer ATA already exists without sweeping its holdings',async()=>{
+  const h=await fixture(),native=rebuild(h.tx,instructions=>{instructions.splice(2,1)})
+  expect(transfers.nativeBuyOutput(native,h.policy).rawAmount).toBe(h.intent.rawAmount)
+  const composed=transfers.composeNativeBuyTransfer(native,h.intent,h.policy),instructions=TransactionMessage.decompile(composed.message).instructions
+  expect(instructions).toHaveLength(5);expect(instructions.at(-1)!.data.readBigUInt64LE(1).toString()).toBe(h.intent.rawAmount)
+  expect(()=>transfers.validateComposedNativeBuy(composed,native,h.intent,h.policy)).not.toThrow()
+  for(const change of [
+   (ixs:ReturnType<typeof TransactionMessage.decompile>['instructions'])=>{ixs[2].keys[0].isWritable=true},
+   (ixs:ReturnType<typeof TransactionMessage.decompile>['instructions'])=>{ixs[2].keys[17].pubkey=Keypair.generate().publicKey},
+   (ixs:ReturnType<typeof TransactionMessage.decompile>['instructions'])=>{ixs.push(ixs[2])},
+  ])expect(()=>transfers.composeNativeBuyTransfer(rebuild(native,change),h.intent,h.policy)).toThrow()
+ })
  it('appends exact transferChecked after idempotent recipient ATA creation and preserves ordinary buy strictness',async()=>{
   const h=await fixture(),tx=transfers.composeNativeBuyTransfer(h.tx,h.intent,h.policy),ixs=TransactionMessage.decompile(tx.message).instructions
   expect(ixs.at(-2)!.data).toEqual(Buffer.from([1]));expect(ixs.at(-2)!.keys[2].pubkey.toBase58()).toBe(h.recipient.toBase58())

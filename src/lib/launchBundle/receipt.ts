@@ -5,7 +5,7 @@ import {TOKEN_PROGRAM_ID,TOKEN_2022_PROGRAM_ID} from '@solana/spl-token'
 export interface LaunchBundleTransfer {walletId:string;payer:string;recipient:string;mint:string;tokenProgram:string;rawAmount:string;decimals:number}
 /** Select public intent fields and detach every nested object from execution. */
 export function publicLaunchBundleTransfers(value:unknown):LaunchBundleTransfer[]{
- if(!Array.isArray(value)||value.length>3)throw new Error('The public token transfer intent is invalid.')
+ if(!Array.isArray(value)||value.length>16)throw new Error('The public token transfer intent is invalid.')
  const ids=new Set<string>()
  return value.map(item=>{
   if(!item||typeof item!=='object'||Array.isArray(item))throw new Error('The public token transfer intent is invalid.')
@@ -33,6 +33,6 @@ export function publicLaunchBundleOutcome(value:unknown):LaunchBundleOutcome{
  if(!['manual','organic','block0'].includes(input.mode)||!Number.isInteger(input.buyerCount)||input.buyerCount<0||input.buyerCount>16||!['confirmed','partial'].includes(input.status))throw new Error('The bundle outcome is invalid.')
  if(input.message!==undefined&&(typeof input.message!=='string'||input.message.length>2000||/[\u0000-\u001f\u007f]/.test(input.message)))throw new Error('The bundle outcome message is invalid.')
  const transfers=input.transfers===undefined?undefined:publicLaunchBundleTransfers(input.transfers)
- if(transfers?.length&&(input.mode!=='block0'||transfers.length>input.buyerCount))throw new Error('The token transfers differ from the bundle outcome.')
+ if(transfers?.length&&transfers.length>input.buyerCount)throw new Error('The token transfers differ from the bundle outcome.')
  return {mode:input.mode,buyerCount:input.buyerCount,status:input.status,...(input.message?{message:input.message}:{}),...(transfers?{transfers}:{})}
 }

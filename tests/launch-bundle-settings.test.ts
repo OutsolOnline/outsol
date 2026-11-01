@@ -9,14 +9,14 @@ afterEach(()=>useLaunchStore.getState().reset())
 
 const wallet=()=>({walletId:crypto.randomUUID(),publicKey:Keypair.generate().publicKey.toBase58(),name:'Buyer',buySol:0.01,delaySeconds:0})
 describe('public inline launch bundle settings',()=>{
- it.each(['manual','organic'] as const)('clears every public transfer destination when leaving Block-0 for %s',mode=>{
+ it.each(['manual','organic'] as const)('preserves public transfer destinations when changing Block-0 to %s',mode=>{
   const store=useLaunchStore.getState(),buyer={...wallet(),transferTo:Keypair.generate().publicKey.toBase58()}
   store.setBundleSettings({...DEFAULT_LAUNCH_BUNDLE_SETTINGS,mode:'block0',groupId:'group',wallets:[buyer]})
   store.setBundleSettings({...useLaunchStore.getState().bundleSettings,mode})
-  expect(useLaunchStore.getState().bundleSettings.wallets[0]).not.toHaveProperty('transferTo')
+  expect(useLaunchStore.getState().bundleSettings.wallets[0].transferTo).toBe(buyer.transferTo)
   expect(useLaunchStore.getState().bundleSettings.wallets[0].buySol).toBe(0.01)
   store.setBundleSettings({...useLaunchStore.getState().bundleSettings,mode:'block0'})
-  expect(useLaunchStore.getState().bundleSettings.wallets[0]).not.toHaveProperty('transferTo')
+  expect(useLaunchStore.getState().bundleSettings.wallets[0].transferTo).toBe(buyer.transferTo)
   expect(buyer).toHaveProperty('transferTo')
  })
  it('requires a fresh review identity after changing a destination or execution mode',()=>{

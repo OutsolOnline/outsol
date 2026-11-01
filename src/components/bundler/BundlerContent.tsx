@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect,useState } from 'react'
 
 import { useBundlerStore } from '@/stores/bundlerStore'
 import { BundlerForm } from './BundlerForm'
@@ -8,9 +8,14 @@ import { Button } from '@/components/ui'
 import {BundlePresets} from './BundlePresets'
 import {useWalletLibraryStore} from '@/stores/walletLibraryStore'
 import {creatorFeeRoutingLabel} from '@/lib/creatorFeeRouting'
+import {BundleWalletControls,useBundleWalletControlPersistence} from './BundleWalletControls'
+import {BundleWalletSetup} from './BundleWalletSetup'
+import {ManagedBundleWallets} from './ManagedBundleWallets'
 
 export function BundlerContent() {
+  const walletStorageError=useBundleWalletControlPersistence('standalone')
   const store = useBundlerStore()
+  const [view,setView]=useState<'launch'|'wallets'>('launch'),[walletBusy,setWalletBusy]=useState(false)
   const library=useWalletLibraryStore()
   useEffect(() => () => useBundlerStore.getState().cancelPendingActions(), [])
   const exportWalletBackup=()=>{
@@ -50,7 +55,9 @@ export function BundlerContent() {
 
   return (
     <div className="workspace-card p-5 sm:p-7 max-w-5xl mx-auto">
-      <div className="space-y-6">
+      {walletStorageError&&<p role="alert" className="notice notice-error mb-5">{walletStorageError}</p>}
+      <nav className="filter-tabs mb-7" aria-label="Bundle workspace"><button type="button" aria-pressed={view==='launch'} className={view==='launch'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('launch')}>Launch setup</button><button type="button" aria-pressed={view==='wallets'} className={view==='wallets'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Wallet controls · Relay &amp; sell</button></nav>
+      <div hidden={view!=='launch'} className="space-y-6">
         {/* Header */}
         <div className="space-y-2 border-b border-border pb-5">
           <h2 className="text-base font-medium text-foreground tracking-tight">Bundle configuration</h2>
@@ -70,7 +77,7 @@ export function BundlerContent() {
             <div className="text-sm text-yellow-500/90">
               <p className="font-medium">Back up generated wallets before funding</p>
               <p className="text-yellow-500/70 mt-1">
-                All signing happens in your browser. Back up generated wallets before funding them; managed wallet backups are available in Wallets. Only public receipts and optional public execution presets are saved here. Closing this page stops pending timed buys and sells.
+                All signing happens in your browser. Back up generated wallets before funding them; use Wallet controls to export private keys or keypair files. Only public receipts and optional public execution presets are saved here. Closing this page stops pending timed buys and sells.
               </p>
             </div>
           </div>
@@ -118,6 +125,7 @@ export function BundlerContent() {
 
         {/* Result */}
         <BundlerResult />
+        {store.result?.createSignature&&<Button variant="secondary" className="w-full" disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Control bundle wallets, Relay &amp; sell</Button>}
 
         {/* Execute Button */}
         {!store.result?.createSignature && !store.result?.bundleId && (
@@ -138,6 +146,7 @@ export function BundlerContent() {
         )}
         {store.isExecuting&&<Button variant="secondary" className="w-full" onClick={store.cancelPendingActions}>Cancel pending browser actions</Button>}
       </div>
+      {view==='wallets'&&<div className="space-y-6"><fieldset disabled={walletBusy||store.isExecuting} className="space-y-5"><ManagedBundleWallets/><BundleWalletSetup mode="standalone" disabled={walletBusy||store.isExecuting}/></fieldset><BundleWalletControls mode="standalone" onBusyChange={setWalletBusy}/></div>}
     </div>
   )
 }

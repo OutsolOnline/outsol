@@ -12,6 +12,7 @@ import {consumerLaunchPlan} from './helpers/consumerLaunchPlan'
 import type {CreatorFeeSelection} from '../src/lib/creatorFeeRouting'
 import {creatorVaultPda} from '@pump-fun/pump-sdk'
 import type {LaunchBundleWallet} from '../src/lib/launchBundle/types'
+import {persistBundleCheckpoint,readPendingBundleReceipt} from '../src/lib/bundler/pending'
 const wrongVault=(tx:VersionedTransaction)=>{const message=TransactionMessage.decompile(tx.message),buy=message.instructions.find(ix=>ix.data.subarray(0,8).equals(Buffer.from([102,6,61,18,1,218,235,234])))!;buy.keys[9].pubkey=creatorVaultPda(Keypair.generate().publicKey);return new VersionedTransaction(new TransactionMessage({payerKey:message.payerKey,recentBlockhash:message.recentBlockhash,instructions:message.instructions}).compileToV0Message())}
 async function harness(mode:'manual'|'block0'|'organic'='block0',selection?:CreatorFeeSelection,long=false,devBuySol=0){
  const creator=Keypair.generate(),buyer=Keypair.generate(),secondBuyer=Keypair.generate(),mint=Keypair.generate(),blockhash=Keypair.generate().publicKey.toBase58();let locked=false,time=1_000,sent=0,initialConfirmed=false
@@ -33,6 +34,32 @@ async function harness(mode:'manual'|'block0'|'organic'='block0',selection?:Crea
  return {input,connection,ports,guards,options,receipts,events,creator,buyer,secondBuyer,mint,lock:()=>{locked=true},sent:()=>sent,setTime:(value:number)=>{time=value},addSecondBuyer:()=>{input.settings.wallets.push({walletId:'second-buyer',publicKey:secondBuyer.publicKey.toBase58(),name:'Second buyer',buySol:0.01,delaySeconds:1})}}
 }
 describe('reviewed inline bundle engine',()=>{
+ it.each(['manual','organic'] as const)('routes only the exact fresh purchase in %s mode and saves its public intent before broadcast',async mode=>{
+  const h=await harness(mode),recipient=Keypair.generate().publicKey.toBase58();h.input.settings.wallets[0].transferTo=recipient
+  let evidence:unknown,saved:unknown,lastReceipt:unknown
+  const simulate=h.ports.simulate!,send=h.ports.sendSingle!
+  const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,simulate:async(...args)=>{if(args[2]?.payer===h.buyer.publicKey.toBase58()){evidence=args[2]?.tokenAccounts;expect(TransactionMessage.decompile(args[1][0].message).instructions.at(-1)!.data[0]).toBe(12)}return simulate(...args)},sendSingle:async(...args)=>send(args[0],args[1],{...args[2],onBroadcast:()=>{args[2]?.onBroadcast?.();if(args[1].message.staticAccountKeys[0].equals(h.buyer.publicKey))saved=structuredClone(lastReceipt)}})})
+  const result=await executePreparedLaunchBundle(prepared,{...h.options,onReceipt:receipt=>{lastReceipt=receipt}})
+  expect(result.success,result.error).toBe(true);expect(result.tokenTransfers).toHaveLength(1);expect(result.tokenTransfers![0]).toMatchObject({recipient,payer:h.buyer.publicKey.toBase58()})
+  expect(evidence).toEqual(expect.arrayContaining([expect.objectContaining({owner:h.buyer.publicKey.toBase58(),expectedDeltaRaw:'0'}),expect.objectContaining({owner:recipient,expectedDeltaRaw:result.tokenTransfers![0].rawAmount})]))
+  expect(saved).toMatchObject({status:'unknown',tokenTransfers:result.tokenTransfers})
+ })
+ it.each(['manual','organic'] as const)('refuses absent or changed same-bank Relay evidence before a %s buyer broadcast',async mode=>{
+  for(const failure of ['absent','amount','mutated']){
+   const h=await harness(mode);h.input.settings.wallets[0].transferTo=Keypair.generate().publicKey.toBase58();const simulate=h.ports.simulate!
+   const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,simulate:async(...args)=>{const result=await simulate(...args);if(args[2]?.payer===h.buyer.publicKey.toBase58()){if(failure==='absent')delete result.tokenAccountDeltasRaw;else{if(failure==='mutated')args[2].tokenAccounts![0].expectedDeltaRaw='7';result.tokenAccountDeltasRaw![args[2].tokenAccounts![0].address]='7'}}return result}})
+   const result=await executePreparedLaunchBundle(prepared,h.options)
+   expect(result.status).toBe('partial');expect(result.error).toMatch(/token.*evidence/i);expect(h.sent()).toBe(1);expect(result.tokenTransfers).toBeUndefined()
+  }
+ })
+ it('retains the exact original routed-buyer intent when confirmation is unknown and never sends the next buyer',async()=>{
+  const h=await harness('organic');h.addSecondBuyer();h.input.settings.wallets.forEach(row=>{row.transferTo=Keypair.generate().publicKey.toBase58()})
+  const values=new Map<string,string>(),storage={getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>{values.set(key,value)},removeItem:(key:string)=>{values.delete(key)}}
+  const send=h.ports.sendSingle!,prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,{...h.ports,sendSingle:async(...args)=>{const result=await send(...args);return args[1].message.staticAccountKeys[0].equals(h.buyer.publicKey)?{...result,status:'unknown'}:result}})
+  const result=await executePreparedLaunchBundle(prepared,{...h.options,onReceipt:receipt=>persistBundleCheckpoint(receipt,storage)})
+  expect(result.status).toBe('unknown');expect(h.sent()).toBe(2);expect(result.tokenTransfers).toHaveLength(1);expect(readPendingBundleReceipt(storage)?.tokenTransfers).toEqual(result.tokenTransfers)
+  expect(()=>persistBundleCheckpoint({...result,tokenTransfers:[{...result.tokenTransfers![0],recipient:Keypair.generate().publicKey.toBase58()}]},storage)).toThrow(/transfer/i)
+ })
  it('composes a signed exact-output transfer in its buyer packet and persists detached original intent',async()=>{
   const h=await harness(),recipient=Keypair.generate().publicKey.toBase58();h.input.settings.wallets[0].transferTo=recipient
   const prepared=await prepareLaunchBundle(h.connection,h.input,h.guards,h.ports),intent=structuredClone(prepared.review.transfers)

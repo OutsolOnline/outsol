@@ -28,8 +28,10 @@ import { assertNoPendingGroupOperation } from '@/lib/walletGroups/history'
 import { TokenPreview } from './TokenPreview'
 import {prepareLaunchNavigation,setActiveDesignForNavigation} from '@/lib/launchNavigation'
 import styles from './LaunchBuilder.module.css'
+import {useBundleWalletControlPersistence} from '@/components/bundler/BundleWalletControls'
 
 export function LaunchContent() {
+  const walletStorageError=useBundleWalletControlPersistence('launch')
   const router=useRouter()
   const { connected } = useWallet()
   const store = useLaunchStore(), platform = usePlatformWalletStore()
@@ -137,6 +139,7 @@ export function LaunchContent() {
     {designing && <div className={styles.draftBar}><div><Save size={16} /><label htmlFor="draft-name">Save your progress</label></div><input id="draft-name" maxLength={80} placeholder="Design name" value={draftName} disabled={saving} onChange={e => setDraftName(e.target.value)} /><button className="secondary-action" disabled={saving} onClick={save}>{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}{saving ? 'Saving…' : 'Save design'}</button></div>}
     </div>{(error || (designing && store.error)) && <p role="alert" className="notice notice-error mt-5">{error || store.error}</p>}{message && <p role="status" className="notice mt-5">{message} <Link href="/drafts" className="underline inline-flex gap-1 items-center">View designs<ArrowUpRight size={13} /></Link></p>}
     {autosaveError&&<p role="alert" className="notice notice-error mt-5">Autosave paused: {autosaveError} Your current work remains on this screen. Open Library to export a saved copy.</p>}
+    {walletStorageError&&<p role="alert" className="notice notice-error mt-5">{walletStorageError}</p>}
     <div className={styles.builderFoot}><span><ShieldCheck size={13} />Private keys stay on your device.</span><span>0% OutSol fee. Network, account rent and third-party charges are separate.</span></div>
   </main><Footer /></div>
 }

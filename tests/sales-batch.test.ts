@@ -22,6 +22,13 @@ function harness(){
  return {request,ports,connection,signer,storage,prepare,send,key,setAvailable:(v:boolean)=>{available=v},setNow:(v:number)=>{now=v},setProceeds:(v:string)=>{proceeds=v},setDebit:(v:string)=>{debit=v},setAmount:(v:string)=>{amount=v}}
 }
 describe('reviewed per-wallet sale batches',()=>{
+ it('passes each original minimum to native refresh so self-induced market movement cannot weaken the approved on-chain floor',async()=>{
+  const h=harness(),review=await prepareSaleBatch(h.connection,[h.request],{slippageBps:500,priorityFeeLamports:'0'},h.ports),original=h.ports.prepare,seen:(string|undefined)[]=[]
+  h.setProceeds('99000')
+  h.ports.prepare=async(connection,input,reviewedMinimumSolOut?:string)=>{seen.push(reviewedMinimumSolOut);const plan=await original(connection,input);return {...plan,minimumSolOut:reviewedMinimumSolOut??plan.minimumSolOut}}
+  const result=await executeSaleBatch(h.connection,review,h.signer,h.ports)
+  expect(seen).toEqual(['100000']);expect(result.status,result.error).toBe('completed');expect(h.send).toHaveBeenCalledOnce()
+ })
  it('prepares exact public bounds and sends sequentially with recovery saved before broadcast',async()=>{
   const h=harness(),second={...h.request,mint:Keypair.generate().publicKey.toBase58()}
   const review=await prepareSaleBatch(h.connection,[h.request,second],{slippageBps:500,priorityFeeLamports:'0'},h.ports)

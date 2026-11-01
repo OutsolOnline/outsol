@@ -9,7 +9,7 @@ import {clearPendingIfMatching,type PendingLaunch} from '@/lib/launchHistory'
 import type {BundleResult} from '@/lib/bundler/types'
 import {checkLaunchSigners,clonePackets,packetMessage,runtimeBundles,validateInitialPackets} from './internal'
 import type {LaunchBundleExecutionOptions,PreparedLaunchBundle} from './model'
-import {assertLaunchTokenEvidence} from './transfers'
+import {assertLaunchTokenEvidence,composeNativeBuyTransfer,validateComposedNativeBuy,nativeBuyOutput,launchTokenExpectations} from './transfers'
 import {publicLaunchBundleTransfers,publicLaunchBundleOutcome} from './receipt'
 export type {LaunchBundleExecutionOptions} from './model'
 
@@ -77,12 +77,20 @@ export async function executePreparedLaunchBundle(prepared:PreparedLaunchBundle,
    const due=input.settings.mode==='organic'?ports.now()+(input.settings.intervalMinSeconds+random*(input.settings.intervalMaxSeconds-input.settings.intervalMinSeconds))*1000:confirmedAt+wallet.delaySeconds*1000
    progress(`Waiting for ${wallet.name||'buyer wallet'} · keep this launch open.`)
    while(ports.now()<due){await ports.wait(Math.min(250,due-ports.now()),options.signal);check()}
-   const tx=await ports.buildBuy({connection,userPublicKey:wallet.publicKey,mintAddress:review.mint,maxBuyAmountSol:wallet.buySol,slippage:input.slippage,priorityFee:input.priorityFeeSol});check()
-   validatePumpTransaction(tx,{action:'buy',payer:wallet.publicKey,mint:review.mint,maxSolLamports:solToLamports(wallet.buySol),maxPriorityFeeLamports:solToLamports(input.priorityFeeSol),expectedBuyCreator:state.creatorPlan.routing.effectiveCreator})
+   const nativeBuy=await ports.buildBuy({connection,userPublicKey:wallet.publicKey,mintAddress:review.mint,maxBuyAmountSol:wallet.buySol,slippage:input.slippage,priorityFee:input.priorityFeeSol});check()
+   const policy={action:'buy' as const,payer:wallet.publicKey,mint:review.mint,maxSolLamports:solToLamports(wallet.buySol),maxPriorityFeeLamports:solToLamports(input.priorityFeeSol),expectedBuyCreator:state.creatorPlan.routing.effectiveCreator,protocolFeeRecipients:state.creatorPlan.protocolFeeRecipients}
+   validatePumpTransaction(nativeBuy,policy)
+   const output=wallet.transferTo?nativeBuyOutput(nativeBuy,policy):undefined
+   const transfer=output?publicLaunchBundleTransfers([{walletId:wallet.walletId,payer:wallet.publicKey,recipient:wallet.transferTo!,mint:review.mint,tokenProgram:output.tokenProgram,rawAmount:output.rawAmount,decimals:6}])[0]:undefined
+   const tx=transfer?composeNativeBuyTransfer(nativeBuy,transfer,policy):nativeBuy
+   const tokenAccounts=transfer?launchTokenExpectations(review.mint,[{owner:wallet.publicKey,rawAmount:transfer.rawAmount,tokenProgram:transfer.tokenProgram}],[transfer]):[]
+   const validateBuy=()=>transfer?validateComposedNativeBuy(tx,nativeBuy,transfer,policy):validatePumpTransaction(tx,policy)
+   validateBuy()
    const key=options.readBuyer(wallet.walletId);if(!key||key.publicKey.toBase58()!==wallet.publicKey)throw new Error('A buyer wallet was locked or changed.');tx.sign([key])
    const message=packetMessage(tx),encoded=Buffer.from(tx.serialize()).toString('base64'),signature=signedTransactionSignature(tx)
-   const stableBuy=(packet:VersionedTransaction)=>{if(packetMessage(packet)!==message||Buffer.from(packet.serialize()).toString('base64')!==encoded)throw new Error('A signed buyer packet changed. Nothing new was sent.')}
-   const simulationCopy=VersionedTransaction.deserialize(tx.serialize()),preview=await ports.simulate(connection,[simulationCopy],{verifySignatures:true,payer:wallet.publicKey,accounts:[wallet.publicKey],signal:options.signal});check();stableBuy(tx);stableBuy(simulationCopy)
+   const stableBuy=(packet:VersionedTransaction)=>{validateBuy();if(packetMessage(packet)!==message||Buffer.from(packet.serialize()).toString('base64')!==encoded)throw new Error('A signed buyer packet changed. Nothing new was sent.')}
+   const simulationCopy=VersionedTransaction.deserialize(tx.serialize()),preview=await ports.simulate(connection,[simulationCopy],{verifySignatures:true,payer:wallet.publicKey,accounts:[wallet.publicKey],...(tokenAccounts.length?{tokenAccounts:tokenAccounts.map(item=>({...item}))}:{}),signal:options.signal});check();stableBuy(tx);stableBuy(simulationCopy)
+   assertLaunchTokenEvidence(preview,tokenAccounts)
    const debit=preview.walletDebitsLamports?.[wallet.publicKey]??preview.payerDebitLamports
    if(!preview.success||typeof debit!=='string'||!/^\d{1,20}$/.test(debit)||BigInt(debit)>BigInt(wallet.requiredLamports))throw new Error(preview.error||'A future buy exceeds its approved budget and reserve. Remaining buys stopped.')
    if(!(await withTimeout(connection.isBlockhashValid(tx.message.recentBlockhash,{commitment:'confirmed'}))).value)throw new Error('A buyer quote expired. Remaining buys stopped.');check();stableBuy(tx);stableBuy(simulationCopy)
@@ -91,7 +99,7 @@ export async function executePreparedLaunchBundle(prepared:PreparedLaunchBundle,
    const context={signature,payer:wallet.publicKey,blockhash:tx.message.recentBlockhash,expiresAfterBlockHeight:height+160,submittedAt:new Date(ports.now()).toISOString()}
    const sendCopy=VersionedTransaction.deserialize(tx.serialize()),before={...result,submittedSignatures:[...(result.submittedSignatures??[])]}
    currentBroadcast=false
-   const sent=await ports.sendSingle(connection,sendCopy,{signal:options.signal,onBroadcast:()=>{check();stableBuy(tx);stableBuy(simulationCopy);stableBuy(sendCopy);result={...result,status:'unknown',submittedSignatures:[...(result.submittedSignatures??[]),signature],submissions:[...(result.submissions??[]),context]};checkpoint();check();stableBuy(tx);stableBuy(simulationCopy);stableBuy(sendCopy);currentBroadcast=true}})
+   const sent=await ports.sendSingle(connection,sendCopy,{signal:options.signal,onBroadcast:()=>{check();stableBuy(tx);stableBuy(simulationCopy);stableBuy(sendCopy);result={...result,status:'unknown',submittedSignatures:[...(result.submittedSignatures??[]),signature],submissions:[...(result.submissions??[]),context],...(transfer?{tokenTransfers:publicLaunchBundleTransfers([...(result.tokenTransfers??[]),transfer])}:{})};checkpoint();check();stableBuy(tx);stableBuy(simulationCopy);stableBuy(sendCopy);currentBroadcast=true}})
    stableBuy(tx);stableBuy(sendCopy)
    if(sent.submitted===false&&!currentBroadcast){result={...(result.submittedSignatures?.includes(signature)?result:before),status:'partial',error:sent.error};checkpoint();return result}
    if(sent.signature!==signature)throw new Error('A buyer submission returned a different signature. Preserve the originals.')

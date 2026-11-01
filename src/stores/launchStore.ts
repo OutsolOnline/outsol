@@ -110,11 +110,7 @@ const initialState = {
 export const useLaunchStore = create<LaunchStore>((set, get) => ({
   ...initialState,
   setConfig: (config) => set((state) => ({ config: { ...state.config, ...config } })),
-  setBundleSettings: (bundleSettings) => set(state => {
-    const next=structuredClone(bundleSettings)
-    if(state.bundleSettings.mode==='block0'&&next.mode!=='block0')for(const wallet of next.wallets)delete wallet.transferTo
-    return {bundleSettings:next}
-  }),
+  setBundleSettings: (bundleSettings) => set({bundleSettings:structuredClone(bundleSettings)}),
   setReceipt: (receipt) => set({ receipt, transactionSignature: receipt.signatures[0] || null }),
 
   setStep: (step) => set({ currentStep: step }),

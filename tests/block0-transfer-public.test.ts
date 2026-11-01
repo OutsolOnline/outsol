@@ -15,8 +15,14 @@ describe('public Block-0 transfer intent',()=>{
   expect(parseLaunchBundleSettings(settings)).toEqual(settings)
   expect(parseLaunchBundleSettings({...settings,wallets:[wallet]}).wallets[0]).toEqual(wallet)
   for(const recipient of [wallet.publicKey,'bad',null,'',Keypair.generate().publicKey.toBase58()+' '])expect(()=>parseLaunchBundleSettings({...settings,wallets:[{...wallet,transferTo:recipient}]})).toThrow()
-  expect(()=>parseLaunchBundleSettings({...settings,mode:'manual'})).toThrow(/Block-0/)
+  expect(parseLaunchBundleSettings({...settings,mode:'manual'}).wallets[0].transferTo).toBe(settings.wallets[0].transferTo)
+  expect(parseLaunchBundleSettings({...settings,mode:'organic'}).wallets[0].transferTo).toBe(settings.wallets[0].transferTo)
   expect(()=>parseLaunchBundleSettings({...settings,wallets:[{...settings.wallets[0],privateKey:'secret'}]})).toThrow(/public/i)
+ })
+ it('supports exact public relay intent for all sixteen sequential buyers without changing old entries',()=>{
+  const mint=key(),intents=Array.from({length:16},(_,index)=>({...transfer(),walletId:`buyer-${index}`,mint}))
+  for(const mode of ['manual','organic','block0'] as const)expect(publicLaunchBundleOutcome({mode,buyerCount:16,status:'partial',transfers:intents}).transfers).toEqual(intents)
+  expect(()=>publicLaunchBundleOutcome({mode:'organic',buyerCount:16,status:'partial',transfers:[...intents,{...transfer(),walletId:'extra',mint}]})).toThrow()
  })
  it('copies allowlisted outcome intent and leaves old outcomes readable',()=>{
   const intent=transfer(),legacy={mode:'block0' as const,buyerCount:1,status:'partial' as const},outcome=publicLaunchBundleOutcome({...legacy,transfers:[{...intent,privateKey:'secret'}]})

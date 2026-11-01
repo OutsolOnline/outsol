@@ -22,6 +22,20 @@ beforeEach(async () => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('bundle UI entry uses the shared transaction lock', () => {
+  it('keeps buyer allocations and Relay destinations attached to wallet identities when changing the creator',async()=>{
+    const library=(await import('../src/stores/walletLibraryStore')).useWalletLibraryStore
+    const keys=Array.from({length:3},()=>Keypair.generate()),ids=['a','b','c'],recipient=Keypair.generate().publicKey.toBase58()
+    library.setState({hydrated:true,storageUnavailable:false,revision:1,groups:[{id:'g',name:'Group',walletIds:ids,createdAt:'now',updatedAt:'now'}],wallets:ids.map((id,index)=>({id,name:id,publicKey:keys[index].publicKey.toBase58(),createdAt:'now'})),getKeypair:(id:string)=>keys[ids.indexOf(id)]||null})
+    store.getState().selectManagedGroup('g','a')
+    store.getState().setBundleWalletBuyAmount(0,0.12);store.getState().setBundleWalletBuyAmount(1,0.34)
+    store.getState().setBundleWalletTransferTo(1,recipient)
+    store.getState().selectManagedGroup('g','b')
+    const rows=store.getState().bundleWallets
+    expect(rows.find(row=>row.libraryWalletId==='a')?.buyAmount).toBe(0)
+    expect(rows.find(row=>row.libraryWalletId==='c')).toMatchObject({buyAmount:0.34,transferTo:recipient})
+    store.getState().selectManagedGroup('g','b')
+    expect(store.getState().bundleWallets.find(row=>row.libraryWalletId==='c')).toMatchObject({buyAmount:0.34,transferTo:recipient})
+  })
   it('selects managed public references without copying private keys into the bundle state',async()=>{
     const library=(await import('../src/stores/walletLibraryStore')).useWalletLibraryStore
     const creator=Keypair.generate(),buyer=Keypair.generate()

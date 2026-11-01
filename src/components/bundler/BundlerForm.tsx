@@ -9,6 +9,8 @@ import { MAX_BUNDLE_WALLETS } from '@/lib/bundler/types'
 import { validateBase58 } from '@/lib/vanity/base58'
 import styles from './BundlerForm.module.css'
 import {ManagedBundleWallets} from './ManagedBundleWallets'
+import {BundleWalletSetup} from './BundleWalletSetup'
+import {BuyerRelayDestination} from './BuyerRelayDestination'
 import {CreatorFeeFields} from '@/components/launch/CreatorFeeFields'
 
 export function BundlerForm() {
@@ -137,6 +139,7 @@ export function BundlerForm() {
   return (
     <fieldset disabled={store.isExecuting || !!store.result?.createSignature} className={`${styles.form} min-w-0 w-full space-y-8 disabled:opacity-70`}>
       <ManagedBundleWallets />
+      <BundleWalletSetup mode="standalone" disabled={store.isExecuting||!!store.result?.createSignature} />
       {/* Token Info */}
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">token information</h2>
@@ -618,6 +621,7 @@ export function BundlerForm() {
                       <input
                         type="checkbox"
                         checked={wallet.sellEnabled}
+                        disabled={!!wallet.transferTo}
                         onChange={(e) => store.setBundleWalletSellEnabled(index, e.target.checked)}
                         className="w-3 h-3 accent-accent"
                         title="enable auto sell"
@@ -664,6 +668,8 @@ export function BundlerForm() {
           <span>total buy: {totalBuyAmount.toFixed(3)} SOL</span>
         </div>
       </section>
+
+      {store.bundleWallets.some(wallet=>wallet.publicKey)&&<section className="space-y-4" aria-label="Buyer Relay destinations"><h2 className="text-lg font-medium">Relay bought tokens</h2><p className="field-help">Forward each buyer’s exact new purchase in its buy transaction. Existing holdings stay in the source. Receiving wallets appear in Wallet controls for sales and backups.</p>{store.bundleWallets.map((wallet,index)=>wallet.publicKey?<BuyerRelayDestination key={wallet.id} id={`bundle-transfer-${wallet.id}`} buyerName={`Buyer ${index+1}`} buyerAddress={wallet.publicKey} value={wallet.transferTo||''} disabled={store.isExecuting||!!store.result?.createSignature} onChange={address=>store.setBundleWalletTransferTo(index,address.trim()||undefined)}/>:null)}</section>}
 
       {/* Settings */}
       <section className="space-y-4">

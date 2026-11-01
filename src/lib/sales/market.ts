@@ -110,7 +110,9 @@ async function simulate(connection:Connection,manifest:Manifest,transaction:Vers
  return {walletBeforeLamports:String(payerBefore.lamports),netDebitLamports:debit.toString(),networkFeeLamports:networkFee.toString(),netSolOut:change.toString()}
 }
 /** Read-only native construction or fixed-provider instructions; no keys or broadcasts. */
-export async function prepareMarketSale(connection:Connection,value:MarketSaleInput):Promise<PreparedMarketSale>{
+export async function prepareMarketSale(connection:Connection,value:MarketSaleInput,reviewedMinimumSolOut?:string):Promise<PreparedMarketSale>{
+ const floor=reviewedMinimumSolOut===undefined?0n:amount(reviewedMinimumSolOut)
+ if(reviewedMinimumSolOut!==undefined&&floor===0n)throw new Error('The reviewed minimum must be positive.')
  const input=validateMarketSaleInput(value),payer=address(input.payer),mint=address(input.mint),program=address(input.tokenProgram),source=getAssociatedTokenAddressSync(mint,payer,false,program),destination=getAssociatedTokenAddressSync(NATIVE_MINT,payer)
  if(await withTimeout(connection.getGenesisHash())!==MAINNET)throw new Error('Market sales support Solana mainnet only.')
  const [mintInfo,sourceInfo,curveInfo]=await withTimeout(connection.getMultipleAccountsInfo([mint,source,bondingCurvePda(mint)],'confirmed'))
@@ -122,10 +124,20 @@ export async function prepareMarketSale(connection:Connection,value:MarketSaleIn
   const native=await preparePumpTrade(connection,{action:'sell',mint:input.mint,payer:input.payer,buySol:'0',sellPercent:100,slippage:input.slippageBps/100,priorityFeeSol:Number(amount(input.priorityFeeLamports))/1e9})
   if(native.maxSellRaw!==input.amountRaw)throw new Error('The native sale balance changed. Scan and review again.')
   transaction=native.transaction;route='pump';minimum=BigInt(native.minimumSolOut);quoted=BigInt(native.solChangeLamports)+BigInt(native.networkFeeLamports);rentCeiling=10000000n
+  if(floor>minimum){
+   // A preceding sale in this queue can move the curve. Keep the original
+   // approval enforced on-chain, then prove the stronger packet in one bank.
+   const message=TransactionMessage.decompile(transaction.message),sells=message.instructions.filter(ix=>ix.programId.equals(PUMP_PROGRAM_ID)&&ix.data.subarray(0,8).equals(Buffer.from([51,230,133,164,1,127,131,173])))
+   if(sells.length!==1||sells[0].data.length!==24||sells[0].data.readBigUInt64LE(16)!==minimum)throw new Error('The exact native sale minimum cannot be retained. Review a fresh sale.')
+   sells[0].data=Buffer.from(sells[0].data);sells[0].data.writeBigUInt64LE(floor,16)
+   transaction=new VersionedTransaction(new TransactionMessage({payerKey:message.payerKey,recentBlockhash:message.recentBlockhash,instructions:message.instructions}).compileToV0Message());minimum=floor
+   if(inspectTradeIntent(transaction,{action:'sell',mint:input.mint,payer:input.payer,buySol:'0',sellPercent:100,slippage:input.slippageBps/100,priorityFeeSol:Number(amount(input.priorityFeeLamports))/1e9},amount(input.amountRaw)).minimumSolOut!==minimum.toString())throw new Error('The reviewed native sale minimum changed.')
+  }
   lastValidBlockHeight=(await withTimeout(connection.getLatestBlockhash('confirmed'))).lastValidBlockHeight
  }else{
   const raw=await fetchBounded('/api/sales/build',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)},async response=>{const text=await response.text();if(text.length>500000)throw new Error('The market build response is too large.');const value=JSON.parse(text);if(value.error)throw new Error(String(value.error).slice(0,200));return value})
   const recipe=apiRecipe(raw,input);tables=await lookupTables(connection,recipe.lookup);setups=recipe.setups;minimum=recipe.minimum;quoted=recipe.quoted;route='jupiter'
+  if(minimum<floor)throw new Error('The market route cannot retain the reviewed minimum. Review a fresh sale.')
   const [hash,rent]=await Promise.all([withTimeout(connection.getLatestBlockhash('confirmed')),withTimeout(connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE,'confirmed'))])
   if(!Number.isSafeInteger(hash.lastValidBlockHeight)||hash.lastValidBlockHeight<1||!Number.isSafeInteger(rent)||rent<1)throw new Error('Current transaction expiry or account rent is unavailable.')
   lastValidBlockHeight=hash.lastValidBlockHeight;rentCeiling=BigInt(rent)*BigInt(setups.size)

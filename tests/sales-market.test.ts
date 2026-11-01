@@ -37,6 +37,10 @@ function harness(build=response()){
  return {connection,fetcher,sent,build,extra,mutateSimulation:(mutation:typeof simulationMutation)=>{simulationMutation=mutation}}
 }
 describe('reviewed zero-platform-fee market sales',()=>{
+ it('does not silently weaken an earlier approved Jupiter minimum on refresh',async()=>{
+  const h=harness()
+  await expect(prepareMarketSale(h.connection,input,'9900001')).rejects.toThrow(/minimum|review/i)
+ })
  it('builds a self-managed SOL exit with exact input, same payer, fresh chain hash and conservative fee/rent reserve',async()=>{
   const h=harness(),plan=await prepareMarketSale(h.connection,input)
   expect(plan.route).toBe('jupiter');expect(plan.amountRaw).toBe('1000000');expect(plan.minimumSolOut).toBe('9900000');expect(plan.estimatedNetSolOut).toBe('9975000');expect(BigInt(plan.maxDebitLamports)).toBeGreaterThanOrEqual(2064280n)

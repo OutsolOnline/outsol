@@ -16,7 +16,6 @@ export function validateLaunchBundleSettings(settings:LaunchBundleSettings):stri
   if(!wallet||typeof wallet.walletId!=='string'||!wallet.walletId.trim()||wallet.walletId.length>100||typeof wallet.name!=='string'||wallet.name.length>100){errors.push('A buyer wallet reference is invalid.');continue}
   try{if(typeof wallet.publicKey!=='string'||new PublicKey(wallet.publicKey).toBase58()!==wallet.publicKey||!PublicKey.isOnCurve(new PublicKey(wallet.publicKey).toBytes()))throw new Error()}catch{errors.push('Choose a valid buyer public address.')}
   if(wallet.transferTo!==undefined){
-   if(settings.mode!=='block0')errors.push('Token destinations require Block-0 mode.')
    try{if(typeof wallet.transferTo!=='string'||new PublicKey(wallet.transferTo).toBase58()!==wallet.transferTo||!PublicKey.isOnCurve(new PublicKey(wallet.transferTo).toBytes()))throw new Error();if(wallet.transferTo===wallet.publicKey)throw new Error()}catch{errors.push('Choose a valid receiving wallet different from the buyer.')}
   }
   if(ids.has(wallet.walletId)||addresses.has(wallet.publicKey))errors.push('Every buyer wallet must have a unique identity.')

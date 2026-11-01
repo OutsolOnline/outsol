@@ -13,7 +13,9 @@ import { DEFAULT_LAUNCH_BUNDLE_SETTINGS, parseLaunchBundleSettings, validateLaun
 import styles from './LaunchSettings.module.css'
 import {CreatorFeeFields} from '../CreatorFeeFields'
 import {requireSupportedCreatorFeeSelection} from '@/lib/creatorFeeRouting'
-import {LaunchTransferDestination} from './LaunchTokenTransfers'
+import {BuyerRelayDestination} from '@/components/bundler/BuyerRelayDestination'
+import {BundleWalletSetup} from '@/components/bundler/BundleWalletSetup'
+import {BundleWalletControls} from '@/components/bundler/BundleWalletControls'
 
 const MAX_BUYERS = 16
 const modes: Array<{ id: LaunchBundleSettings['mode']; title: string; subtitle: string; Icon: typeof Zap }> = [
@@ -28,6 +30,7 @@ const numericValue = (value: number) => Number.isFinite(value) ? value : ''
 export function LaunchSettingsStep() {
   const store = useLaunchStore(), library = useWalletLibraryStore(), platform = usePlatformWalletStore(), external = useWallet()
   const settings = store.bundleSettings || DEFAULT_LAUNCH_BUNDLE_SETTINGS
+  const [walletOpsBusy,setWalletOpsBusy]=useState(false)
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [pendingGroup, setPendingGroup] = useState<string | null>(null)
   const [passphrase, setPassphrase] = useState(''), [unlockTarget, setUnlockTarget] = useState('all'), [unlocking, setUnlocking] = useState(false), [unlockError, setUnlockError] = useState('')
   const [reloading, setReloading] = useState(false)
@@ -45,7 +48,7 @@ export function LaunchSettingsStep() {
   const totalBuySol = creatorBuySol + buyerBuySol
   const creatorShare = totalBuySol > 0 ? creatorBuySol / totalBuySol * 100 : 0
   const invalidSettings = validateLaunchBundleSettings(settings)
-  const blocked = store.isLoading || unlocking || reloading
+  const blocked = store.isLoading || unlocking || reloading || walletOpsBusy
 
   const members: WalletSummary[] = (group ? group.walletIds.map(id => library.wallets.find(wallet => wallet.id === id)).filter((item): item is WalletSummary => Boolean(item)) : [])
   for (const row of settings.wallets) if (!members.some(item => item.id === row.walletId)) members.push(library.wallets.find(item => item.id === row.walletId) || { id: row.walletId, publicKey: row.publicKey, name: row.name, createdAt: '' })
@@ -142,7 +145,7 @@ export function LaunchSettingsStep() {
             <div className={styles.walletIdentity}><label htmlFor={`launch-include-${member.id}`}>{member.name}</label><span className={styles.walletAddress}>{shortAddress(member.publicKey)}</span><span className={`${styles.lockState} ${unlocked && available ? styles.unlocked : ''}`}>{!available ? 'Unavailable · remove this row' : isPayer ? 'Signing wallet · exclude from buyers' : unlocked ? <><UnlockKeyhole size={10} />Unlocked</> : <><LockKeyhole size={10} />Locked</>}</span></div>
             <div className={styles.rowAmount}><label htmlFor={`launch-buy-${member.id}`} className={styles.mobileFieldLabel}>Buy amount</label><div><Input id={`launch-buy-${member.id}`} type="number" min="0" max="1000" step="0.001" inputMode="decimal" aria-label={`${member.name} buy amount in SOL`} value={numericValue(row?.buySol ?? 0)} disabled={blocked || !selected || !available || isPayer} onChange={event => changeWallet(member.id, { buySol: event.currentTarget.valueAsNumber })} /><span>SOL</span></div></div>
             {settings.mode === 'manual' && <div className={styles.rowDelay}><label htmlFor={`launch-delay-${member.id}`} className={styles.mobileFieldLabel}>Delay</label><div><Input id={`launch-delay-${member.id}`} type="number" min="0" max="3600" step="1" inputMode="numeric" aria-label={`${member.name} delay in seconds after creation confirms`} value={numericValue(row?.delaySeconds ?? 0)} disabled={blocked || !selected || !available || isPayer} onChange={event => changeWallet(member.id, { delaySeconds: event.currentTarget.valueAsNumber })} /><span>sec</span></div></div>}
-            {settings.mode === 'block0' && selected && <div className={styles.rowTransfer}><LaunchTransferDestination id={`launch-transfer-${member.id}`} buyerName={member.name} value={row?.transferTo || ''} disabled={blocked || !available || isPayer} onChange={value => changeWallet(member.id, {transferTo: value.trim() || undefined})}/></div>}
+            {selected && <div className={styles.rowTransfer}><BuyerRelayDestination buyerAddress={member.publicKey} id={`launch-transfer-${member.id}`} buyerName={member.name} value={row?.transferTo || ''} disabled={blocked || !available || isPayer} onChange={value => changeWallet(member.id, {transferTo: value.trim() || undefined})}/></div>}
           </div>
         })}</div><p className={styles.rowHelp}>Only included wallets with a buy amount above 0 participate. {settings.mode === 'manual' ? 'A 0-second delay starts after token creation confirms.' : settings.mode === 'block0' ? 'Keep at most three positive buyer amounts; actual packet capacity is checked during preparation.' : 'Buys follow the interval range below.'}</p>
       </>}
@@ -154,9 +157,11 @@ export function LaunchSettingsStep() {
 
     <section className={styles.allocation} aria-labelledby="launch-allocation-title"><div className={styles.allocationHeading}><div><span className={styles.eyebrow}>YOUR LAUNCH ALLOCATION</span><h3 id="launch-allocation-title">{formatSol(totalBuySol)} <span>SOL in planned buys</span></h3></div><span>{positiveWallets.length} active buyer{positiveWallets.length === 1 ? '' : 's'}</span></div><div className={styles.allocationBar} aria-hidden="true"><span style={{ width: `${creatorShare}%` }} /><span style={{ width: `${totalBuySol > 0 ? 100 - creatorShare : 0}%` }} /></div><dl><div><dt><i className={styles.creatorDot} />Creator first buy</dt><dd>{formatSol(creatorBuySol)} SOL</dd></div><div><dt><i className={styles.buyerDot} />Additional wallet buys</dt><dd>{formatSol(buyerBuySol)} SOL</dd></div><div className={styles.feeRow}><dt>OutSol platform fee</dt><dd>0%</dd></div><div><dt>Network, rent & protocol costs</dt><dd>After simulation</dd></div>{settings.mode === 'block0' && <div><dt>Validator tip</dt><dd>Reviewed before signing</dd></div>}</dl><p>Amounts represent maximum SOL buy budgets. Full launch costs are checked before you sign.</p></section>
 
+    <BundleWalletSetup mode="launch" creatorAddress={payer} disabled={blocked} />
+    <BundleWalletControls mode="launch" creatorAddress={payer} onBusyChange={setWalletOpsBusy} />
     {invalidSettings.length > 0 && <p role="status" className={styles.validationNote}>{invalidSettings[0]}</p>}
     {notice && <p role="status" className={styles.notice}><Check size={14} /><span>{notice}</span></p>}
     {error && <div className={styles.errorBox} ref={errorBox} tabIndex={-1} role="alert">{error}</div>}
-    <div className={styles.footer}><p><ShieldCheck size={14} />Nothing is funded or sent from this screen.</p><div><Button type="button" variant="ghost" disabled={blocked} onClick={store.prevStep}><ArrowLeft size={14} />Back to mint</Button><Button type="button" disabled={blocked} onClick={next}>Choose signing wallet<ArrowRight size={15} /></Button></div></div>
+    <div className={styles.footer}><p><ShieldCheck size={14} />Launches and wallet operations each need their own review and signature.</p><div><Button type="button" variant="ghost" disabled={blocked} onClick={store.prevStep}><ArrowLeft size={14} />Back to mint</Button><Button type="button" disabled={blocked} onClick={next}>Choose signing wallet<ArrowRight size={15} /></Button></div></div>
   </div>
 }

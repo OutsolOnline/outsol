@@ -1,6 +1,20 @@
 # Relay wallets and token sales
 
-Open **Wallets → Relay & sell**, **Tools → Relay wallets**, or the Relay link beside launch discovery. This is our existing wallet-to-wallet token migration workflow integrated into OutSol; it is not a transaction-submission relay.
+Open **Bundles → Wallet controls · Relay & sell** to manage the current bundle's creator, buyers and recipients together. The same controls are available in the token builder's preparation and result screens. **Wallets → Relay & sell** and **Tools → Relay wallets** remain available for other wallet groups. Relay moves tokens between your wallets; it is not a transaction-submission relay.
+
+## Wallet controls inside Bundles
+
+Use **Generate bundle wallets** or **Import bundle wallets** to create an encrypted named group without leaving the launch. The first wallet in a new standalone group is the creator; the others are buyers. Adding wallets preserves existing buy budgets, timings and Relay destinations. New buyer budgets start at zero. The inline builder also lets you choose whether the first new wallet becomes the creator.
+
+**Wallet controls** includes configured wallets even before they buy, plus known controlled recipients. Select all or individual wallets, scan their balances, then choose **Sell all tokens in this wallet** or **Sell all selected wallets**. Every sale still requires a review and signature. Sell-all includes all eligible tokens in those wallets; unsupported or unavailable markets are identified rather than silently sold. Proceeds return to each signing wallet. An external recipient is read-only until its matching private key is imported.
+
+**Export key / keypair** backs up one wallet; **Export selected keys** backs up the selected set. Choose Solana keypair JSON or Base58. A single keypair is a standard 64-byte Solana CLI JSON array; a single Base58 key is plain text. Multi-wallet backups are JSON containing public names, addresses and the selected private-key format. The files are unencrypted and grant full spending access. Exports stay local, require explicit acknowledgement, validate every key against its public address and refuse partial backups if a selected wallet locks or changes. Restore at most 20 wallets per import; larger exports can be restored in batches.
+
+In **Launch setup**, each buyer can forward exactly its newly purchased tokens to a distinct recipient in the same buy transaction. This works with Atomic / block zero, After confirmation and Organic intervals. Existing buyer holdings remain unchanged. Recipient-account rent and network charges are included in the execution checks. A routed buyer cannot schedule a source-wallet sale of those forwarded tokens; sell from the recipient in Wallet controls instead. Creator first buys are unchanged.
+
+After a completed bundle refresh, public receipts recover the actual signing wallets and automatic recipients. Added recipient selections and saved routes follow the named group before launch and the mint after launch, including moving from the inline builder to Bundles. Import the matching keys or unlock the encrypted library to regain control. The inline builder does not reopen a completed result screen after a full reload; use **Bundles → Wallet controls** for its saved bundle receipt. Refresh never resumes unfinished timed buys or sales automatically.
+
+An extra recipient attachment uses its local library identity. If you explicitly delete that wallet and later reimport it under a new identity, use **Wallets → Relay & sell** to control the restored wallet. Its key is available in the library, but the old bundle attachment is not automatically reassigned. A new unlaunched bundle can select the restored wallet as its buyer's Relay destination.
 
 ## Create and organize wallets
 
@@ -44,3 +58,5 @@ Configuration, encrypted wallets and receipts are local to the current browser/o
 ## Verification
 
 On 2026-10-31, disposable fake-funded Surfpool tests executed SPL and Token-2022 transfers with exact amounts above JavaScript's safe integer range. The complete product path also executed launch → sniper buy → exact automatic Relay → recipient 100% native sale, preserving pre-existing source holdings and original receipts. A separate unsigned mainnet USDC → SOL preview verified the real Jupiter provider and same-bank balance checks while every spending method was blocked. This does not establish funded Jupiter/mainnet landing, auction priority or universal token support.
+
+On 2026-11-01, six additional fake-funded Surfpool cases exercised both launch surfaces across all three bundle modes. They verified exact new-purchase forwarding, preservation of incoming/pre-existing tokens, cold public-receipt recovery, an individual wallet sale and selling the remaining wallet group to zero token balances. Native Pump group sales retain each original reviewed minimum in the signed on-chain instruction, including price changes caused by the preceding group sale. No real SOL was spent.

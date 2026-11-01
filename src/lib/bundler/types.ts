@@ -13,6 +13,8 @@ export interface BundleWallet {
   privateKey: string
   /** Session-only library reference. Managed keys never enter this object. */
   libraryWalletId?: string
+  /** Public recipient for this purchase's exact token output; no key material. */
+  transferTo?: string
   publicKey: string | null
   balance: number | null
   buyAmount: number
