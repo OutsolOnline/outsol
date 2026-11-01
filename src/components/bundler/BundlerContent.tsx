@@ -11,6 +11,7 @@ import {creatorFeeRoutingLabel} from '@/lib/creatorFeeRouting'
 import {BundleWalletControls,useBundleWalletControlPersistence} from './BundleWalletControls'
 import {BundleWalletSetup} from './BundleWalletSetup'
 import {ManagedBundleWallets} from './ManagedBundleWallets'
+import {SniperPairsWorkspace} from './SniperPairsWorkspace'
 
 export function BundlerContent() {
   const walletStorageError=useBundleWalletControlPersistence('standalone')
@@ -48,6 +49,7 @@ export function BundlerContent() {
     store.creatorPublicKey &&
     mintReady &&
     !store.isExecuting &&
+    !walletBusy &&
     !store.result?.createSignature &&
     store.bundleWallets.every(wallet=>wallet.buyAmount<=0||wallet.isValid) &&
     (!store.managedGroupId||(library.groups.some(group=>group.id===store.managedGroupId)&&[store.managedCreatorWalletId,...store.bundleWallets.filter(wallet=>wallet.buyAmount>0).map(wallet=>wallet.libraryWalletId)].every(id=>!!id&&library.unlockedIds.includes(id)))) &&
@@ -56,20 +58,21 @@ export function BundlerContent() {
   return (
     <div className="workspace-card p-5 sm:p-7 max-w-5xl mx-auto">
       {walletStorageError&&<p role="alert" className="notice notice-error mb-5">{walletStorageError}</p>}
-      <nav className="filter-tabs mb-7" aria-label="Bundle workspace"><button type="button" aria-pressed={view==='launch'} className={view==='launch'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('launch')}>Launch setup</button><button type="button" aria-pressed={view==='wallets'} className={view==='wallets'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Wallet controls · Relay &amp; sell</button></nav>
+      <nav className="filter-tabs mb-7" aria-label="Bundle workspace"><button type="button" aria-pressed={view==='launch'} className={view==='launch'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('launch')}>Launch &amp; sniper pairs</button><button type="button" aria-pressed={view==='wallets'} className={view==='wallets'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Advanced wallet tools</button></nav>
       <div hidden={view!=='launch'} className="space-y-6">
         {/* Header */}
         <div className="space-y-2 border-b border-border pb-5">
-          <h2 className="text-base font-medium text-foreground tracking-tight">Bundle configuration</h2>
+          <h2 className="text-base font-medium text-foreground tracking-tight">Prepare your launch</h2>
           <p className="text-muted text-sm">
-            Your token, participating wallets and execution preferences.
+            Set up reusable sniper pairs, then add your token details and review execution.
           </p>
         </div>
 
-        <BundlePresets />
+        <details className="rounded-lg border border-border p-4"><summary className="text-sm cursor-pointer">Launch presets and execution options</summary><div className="mt-4"><BundlePresets /></div></details>
+        {view==='launch'&&<SniperPairsWorkspace mode="standalone" onBusyChange={setWalletBusy}/>}
 
         {/* Warning stays before wallet funding and execution controls. */}
-        <div className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+        {(store.creatorPrivateKey||store.bundleWallets.some(wallet=>wallet.privateKey))&&<div className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
           <div className="flex gap-3">
             <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -81,12 +84,12 @@ export function BundlerContent() {
               </p>
             </div>
           </div>
-        </div>
+        </div>}
 
         {(store.creatorPrivateKey||store.bundleWallets.some(wallet=>wallet.privateKey))&&<Button variant="secondary" onClick={exportWalletBackup}>Export private wallet backup</Button>}
 
         {/* Form */}
-        <BundlerForm />
+        <fieldset disabled={walletBusy}><BundlerForm /></fieldset>
 
         {/* Cost Estimate */}
         <div className="p-4 rounded-lg border border-border bg-surface space-y-2">

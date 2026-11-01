@@ -1,6 +1,18 @@
 # Relay wallets and token sales
 
-Open **Bundles → Wallet controls · Relay & sell** to manage the current bundle's creator, buyers and recipients together. The same controls are available in the token builder's preparation and result screens. **Wallets → Relay & sell** and **Tools → Relay wallets** remain available for other wallet groups. Relay moves tokens between your wallets; it is not a transaction-submission relay.
+Open **Bundles → Launch & sniper pairs** for the simple session workflow. The same pair setup is available during token-builder preparation. **Advanced wallet tools**, **Wallets → Relay & sell** and **Tools → Relay wallets** retain the general wallet controls. Relay moves tokens between your wallets; it is not a transaction-submission relay.
+
+## Sniper → Token Receiver sessions
+
+**Generate sniper session** creates all selected pairs in one action, with an optional separate deployer. A pair is named **A Sniper → A Token Receiver**, then B, C and onward. Generate up to 16 pairs for a launch; encryption happens in batches of at most 20 keys. The library supports 100 wallets in total. No funds are sent by generation. The deployer creates the token and is never automatically used as a sniper or receiver.
+
+**Download session backup** saves every selected sniper, receiver and selected local deployer in one unencrypted JSON file, with their names and pair roles. Keys must be unlocked. **Unlock session** unlocks the complete selected session together when its wallets share a passphrase; mixed-passphrase wallets can be unlocked separately. Keep this file private: it grants full spending access. **Import session backup** verifies every private key and public address, restores missing wallets into the encrypted library in batches and rebuilds the pair roles. Existing wallets keep their original encryption. Interruptions preserve already-saved encrypted wallets rather than deleting them.
+
+Fund the displayed addresses yourself: each sniper needs its buy allocation plus fees and any recipient-account rent; each receiver needs SOL for later sale fees. **Use these pairs for launch** attaches only the sniper wallets as buyers and fixes their paired receiver destinations. Set the buy amounts in each card. The existing launch review and signature steps still apply. Exact new purchases forward to the receiver in the buy transaction; existing source tokens remain in the source.
+
+**Sell A receiver** reviews supported holdings in A's receiver only. **Sell all receivers** reviews the selected session's receiver wallets only. Snipers and deployer are excluded at quote, review and signing boundaries. These actions refresh balances before opening the review. **Send tokens to receiver** separately scans and reviews existing source holdings for the fixed pair destination. Sales and transfers remain sequential reviewed queues, with pending/recovery protection and no automatic restart.
+
+Saved pairs and public session names/deployer addresses survive refresh and can be reused for another token. Keys lock after refresh; nothing automatically buys or sells. A restored wallet with a new local ID binds to a pair only by its exact public address. Existing manual creator/buyer secrets block pair assignment until the user backs them up and explicitly changes the wallet source, so the new flow cannot silently discard their only copy.
 
 ## Wallet controls inside Bundles
 

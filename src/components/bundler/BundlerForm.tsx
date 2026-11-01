@@ -17,6 +17,7 @@ export function BundlerForm() {
   const store = useBundlerStore()
   const [showBulkImport, setShowBulkImport] = useState(false)
   const [bulkKeys, setBulkKeys] = useState('')
+  const [manualCreatorOpen,setManualCreatorOpen]=useState(false),[manualBuyersOpen,setManualBuyersOpen]=useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [bannerPreview, setBannerPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -138,8 +139,7 @@ export function BundlerForm() {
 
   return (
     <fieldset disabled={store.isExecuting || !!store.result?.createSignature} className={`${styles.form} min-w-0 w-full space-y-8 disabled:opacity-70`}>
-      <ManagedBundleWallets />
-      <BundleWalletSetup mode="standalone" disabled={store.isExecuting||!!store.result?.createSignature} />
+      <details className="rounded-lg border border-border p-4"><summary className="text-sm cursor-pointer">Advanced wallet groups and manual import</summary><div className="mt-4 space-y-4"><ManagedBundleWallets /><BundleWalletSetup mode="standalone" disabled={store.isExecuting||!!store.result?.createSignature} /></div></details>
       {/* Token Info */}
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">token information</h2>
@@ -261,7 +261,8 @@ export function BundlerForm() {
 
       {/* Creator Wallet */}
       <CreatorFeeFields idPrefix="bundler-creator-fees" value={store.creatorFeeSelection} onChange={store.setCreatorFeeSelection} disabled={store.isExecuting||!!store.result?.createSignature}/>
-      <section className="space-y-4">
+      <details className="rounded-lg border border-border p-4" onToggle={event=>setManualCreatorOpen(event.currentTarget.open)}><summary className="text-sm cursor-pointer">Advanced deployer wallet and first buy</summary>
+      {manualCreatorOpen&&<section className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">creator wallet</h2>
         
         {!store.managedGroupId&&<div className="space-y-2">
@@ -269,6 +270,9 @@ export function BundlerForm() {
           <div className="flex gap-2">
             <Input
               type="password"
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
               value={store.creatorPrivateKey}
               onChange={(e) => store.setCreatorPrivateKey(e.target.value)}
               placeholder="Enter creator wallet private key..."
@@ -313,8 +317,8 @@ export function BundlerForm() {
             placeholder="0.05"
           />
         </div>
-      </section>
-
+      </section>}
+      </details>
       {/* Mint Address */}
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">mint address</h2>
@@ -482,6 +486,8 @@ export function BundlerForm() {
       </section>
 
       {/* Bundle Wallets */}
+      <details className="rounded-lg border border-border p-4" onToggle={event=>setManualBuyersOpen(event.currentTarget.open)}><summary className="text-sm cursor-pointer">Advanced buyer wallets, timing and destinations</summary>
+      {manualBuyersOpen&&<>
       <section className="space-y-4">
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <h2 className="text-lg font-medium text-foreground">bundle wallets</h2>
@@ -671,6 +677,8 @@ export function BundlerForm() {
 
       {store.bundleWallets.some(wallet=>wallet.publicKey)&&<section className="space-y-4" aria-label="Buyer Relay destinations"><h2 className="text-lg font-medium">Relay bought tokens</h2><p className="field-help">Forward each buyer’s exact new purchase in its buy transaction. Existing holdings stay in the source. Receiving wallets appear in Wallet controls for sales and backups.</p>{store.bundleWallets.map((wallet,index)=>wallet.publicKey?<BuyerRelayDestination key={wallet.id} id={`bundle-transfer-${wallet.id}`} buyerName={`Buyer ${index+1}`} buyerAddress={wallet.publicKey} value={wallet.transferTo||''} disabled={store.isExecuting||!!store.result?.createSignature} onChange={address=>store.setBundleWalletTransferTo(index,address.trim()||undefined)}/>:null)}</section>}
 
+      </>}
+      </details>
       {/* Settings */}
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">settings</h2>

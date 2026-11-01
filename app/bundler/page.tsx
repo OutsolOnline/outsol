@@ -28,17 +28,9 @@ export default function BundlerPage() {
       <main id="workspace-content" tabIndex={-1} className="workspace-main flex-1">
         <div className="max-w-7xl mx-auto space-y-7">
           <div className="page-heading flex flex-wrap items-start justify-between gap-4">
-            <div><div className="flex items-center gap-2 text-xs text-accent mb-3"><Layers3 size={14} aria-hidden="true" />PUMP.FUN · SOL DEPLOYER</div><h1 className="text-3xl font-medium tracking-tight text-foreground">Wallet bundles</h1><p className="mt-2 text-sm text-muted max-w-xl">Coordinate your launch with Atomic / block zero, After confirmation or Organic timing. Review an execution style below, then choose your wallets and budgets.</p></div>
+            <div><div className="flex items-center gap-2 text-xs text-accent mb-3"><Layers3 size={14} aria-hidden="true" />PUMP.FUN · SOL DEPLOYER</div><h1 className="text-3xl font-medium tracking-tight text-foreground">Wallet bundles</h1><p className="mt-2 text-sm text-muted max-w-xl">Generate reusable sniper and receiver pairs, fund their addresses yourself, then launch and manage your token.</p></div>
             <Link href="/launch" className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-xs text-muted hover:text-foreground hover:border-muted-dim">Standard launch studio<ArrowUpRight size={13} aria-hidden="true" /></Link>
           </div>
-          <nav aria-label="Bundle execution styles" className="flex flex-wrap gap-2">
-            {[
-              ['atomic', 'Atomic / block zero'],
-              ['confirmed', 'After confirmation'],
-              ['organic', 'Organic intervals'],
-            ].map(([id, title]) => <a key={id} href={`#bundle-preset-${id}`} onClick={() => document.getElementById(`bundle-preset-${id}`)?.focus()} className="inline-flex items-center gap-2 rounded-lg border border-accent/20 bg-accent/5 px-4 py-2.5 text-xs text-accent hover:border-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4">{title}<ArrowUpRight size={13} aria-hidden="true" /></a>)}
-          </nav>
-          <p className="field-help">These links take you to each preset for review. Your current wallet amounts stay unchanged until you choose to apply a preset.</p>
           <div className="flex items-start gap-2 text-xs text-muted"><ShieldCheck size={14} className="text-accent mt-0.5 flex-shrink-0" aria-hidden="true" /><p>0% OutSol platform fees. Network fees, account rent, venue charges and any selected Jito tip still apply.</p></div>
           <BundlerContent />
           <details className="workspace-card">

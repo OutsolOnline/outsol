@@ -16,6 +16,7 @@ import {requireSupportedCreatorFeeSelection} from '@/lib/creatorFeeRouting'
 import {BuyerRelayDestination} from '@/components/bundler/BuyerRelayDestination'
 import {BundleWalletSetup} from '@/components/bundler/BundleWalletSetup'
 import {BundleWalletControls} from '@/components/bundler/BundleWalletControls'
+import {SniperPairsWorkspace} from '@/components/bundler/SniperPairsWorkspace'
 
 const MAX_BUYERS = 16
 const modes: Array<{ id: LaunchBundleSettings['mode']; title: string; subtitle: string; Icon: typeof Zap }> = [
@@ -124,6 +125,8 @@ export function LaunchSettingsStep() {
 
     <section className="py-6 border-b border-border"><CreatorFeeFields value={store.config.creatorFeeSelection} onChange={selection=>{store.setConfig({creatorFeeSelection:selection});setError('')}} disabled={blocked} idPrefix="launch-fees"/></section>
 
+    <SniperPairsWorkspace mode="launch" creatorAddress={payer} onBusyChange={setWalletOpsBusy}/>
+    <details className="rounded-lg border border-border p-4"><summary className="text-sm cursor-pointer">Advanced wallet selection, timing and allocation</summary>
     <section className={styles.walletSection} aria-labelledby="launch-buyers-title">
       <div className={styles.sectionTop}><div><span className={styles.eyebrow}>ADDITIONAL WALLET BUYS</span><h3 id="launch-buyers-title">Bring your wallets into the launch.</h3></div><span className={styles.walletCount}>{settings.wallets.length}/{MAX_BUYERS}</span></div>
       <p className={styles.sectionCopy}>Choose a vault group, then review which wallets participate and how much each buys. New selections start at 0 SOL.</p>
@@ -159,6 +162,7 @@ export function LaunchSettingsStep() {
 
     <BundleWalletSetup mode="launch" creatorAddress={payer} disabled={blocked} />
     <BundleWalletControls mode="launch" creatorAddress={payer} onBusyChange={setWalletOpsBusy} />
+    </details>
     {invalidSettings.length > 0 && <p role="status" className={styles.validationNote}>{invalidSettings[0]}</p>}
     {notice && <p role="status" className={styles.notice}><Check size={14} /><span>{notice}</span></p>}
     {error && <div className={styles.errorBox} ref={errorBox} tabIndex={-1} role="alert">{error}</div>}
