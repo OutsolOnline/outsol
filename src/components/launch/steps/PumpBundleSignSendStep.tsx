@@ -31,7 +31,7 @@ type Status='idle'|'preparing'|'ready'|'signing'|'sending'|'error'|'unknown'
 const sol=(value:string|number)=>(Number(value)/1e9).toLocaleString(undefined,{maximumFractionDigits:9})
 const short=(value:string)=>`${value.slice(0,6)}…${value.slice(-6)}`
 
-export function PumpBundleSignSendStep(){
+export function PumpBundleSignSendStep({assertCanLaunch}:{assertCanLaunch?:()=>void}={}){
  const {connection}=useConnection(),wallet=useWallet(),platform=usePlatformWalletStore(),store=useLaunchStore()
  const {metadata,metadataUri,imageFile,bannerFile,config,bundleSettings,usePlatformWallet}=store
  const payer=usePlatformWallet?platform.getPublicKey():wallet.publicKey?.toBase58()
@@ -50,8 +50,9 @@ export function PumpBundleSignSendStep(){
  const reviewKey=launchReviewKey(store,payer)
  useEffect(()=>{if(operation.current)return;setPrepared(null);setApproved(false);preparedKey.current=null;setStatus(value=>['signing','sending','unknown'].includes(value)?value:'idle')},[reviewKey,imageFile,bannerFile])
  useEffect(()=>{if(config.creatorFeeSelection.kind!=='github'||githubIdentity.current?.username.toLowerCase()!==config.creatorFeeSelection.username.toLowerCase()){githubIdentity.current=null;setReviewedGitHub(null)}},[config.creatorFeeSelection])
- const assertReview=(expected:string)=>{if(controller.current.signal.aborted||readReviewKey()!==expected)throw new Error('The launch details, fee recipient, selected wallets or signer changed. Prepare a fresh review.')}
+ const assertReview=(expected:string)=>{assertCanLaunch?.();if(controller.current.signal.aborted||readReviewKey()!==expected)throw new Error('The launch details, fee recipient, selected wallets or signer changed. Prepare a fresh review.')}
  const available=()=>{
+  assertCanLaunch?.()
   if(readPending())throw new Error('A previous launch needs a confirmation check. Open Activity before starting another.')
   if(readTradePending())throw new Error('A previous trade needs a confirmation check in Activity.')
   assertNoPendingWalletOperation();assertNoPendingGroupOperation();assertNoPendingBundleReceipt()

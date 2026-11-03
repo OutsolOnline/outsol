@@ -21,6 +21,7 @@ const amount=(value:string|undefined,label:string)=>{if(typeof value!=='string'|
 export async function prepareLaunchBundle(connection:Connection,raw:LaunchBundleInput,guards:LaunchBundleGuards,overrides:Partial<LaunchBundlePorts>={}):Promise<PreparedLaunchBundle>{
  const selection=migrateLegacyCreatorFeeSelection(raw.creatorFeeSelection),github=raw.githubRecipient===undefined?undefined:parseVerifiedGitHubIndividual(raw.githubRecipient)
  const input:LaunchBundleInput={...raw,payer:new PublicKey(raw.payer).toBase58(),mintKeypair:Keypair.fromSecretKey(new Uint8Array(raw.mintKeypair.secretKey)),metadata:{...raw.metadata},settings:parseLaunchBundleSettings(raw.settings),creatorFeeSelection:selection,githubRecipient:github},ports={...defaults,...overrides}
+ if(input.settings.deferBuys)throw new Error('Staged buyers cannot enter automatic bundle execution. Deploy with the creator-only path, then review the saved plan after confirmation.')
  const routing=resolveCreatorFeeRouting({selection,payer:input.payer,mint:input.mintKeypair.publicKey.toBase58(),github})
  if(!Number.isFinite(input.slippage)||input.slippage<0.1||input.slippage>50||!Number.isFinite(input.priorityFeeSol)||input.priorityFeeSol<0||input.priorityFeeSol>0.01||!Number.isFinite(input.jitoTipSol)||input.jitoTipSol<0||input.jitoTipSol>0.1)throw new Error('Check slippage, priority fee and bundle tip limits.')
  const developerBudget=solToLamports(input.devBuySol),tipBudget=solToLamports(input.jitoTipSol),buyers=input.settings.wallets.filter(wallet=>wallet.buySol>0)

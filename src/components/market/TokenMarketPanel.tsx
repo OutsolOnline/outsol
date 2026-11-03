@@ -1,0 +1,35 @@
+'use client'
+import {useEffect,useState} from 'react'
+import {RefreshCw,ExternalLink} from 'lucide-react'
+import {fetchTokenMarket} from '@/lib/market/client'
+import type {TokenMarketSnapshot} from '@/lib/market/types'
+import {formatEvidenceAmount} from '@/lib/accounting/export'
+import {MarketChart} from './MarketChart'
+import {useWalletMarkers} from './useWalletMarkers'
+const short=(value:string)=>`${value.slice(0,5)}…${value.slice(-5)}`
+export function TokenMarketPanel({mint}:{mint:string}){
+ const [snapshot,setSnapshot]=useState<TokenMarketSnapshot|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[revision,setRevision]=useState(0),[live,setLive]=useState(true),[tick,setTick]=useState(0),[now,setNow]=useState(0),{markers,warning}=useWalletMarkers(mint)
+ useEffect(()=>{setNow(Date.now());const timer=setInterval(()=>setNow(Date.now()),10_000);return()=>clearInterval(timer)},[])
+ useEffect(()=>{if(!live)return;const timer=setInterval(()=>{if(!document.hidden)setTick(value=>value+1)},30_000);return()=>clearInterval(timer)},[live])
+ useEffect(()=>{
+  const controller=new AbortController();setLoading(true);setError('')
+  void fetchTokenMarket(mint,[],controller.signal).then(value=>{if(!controller.signal.aborted)setSnapshot(value)}).catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Confirmed data could not be loaded.')}).finally(()=>{if(!controller.signal.aborted)setLoading(false)})
+  return()=>controller.abort()
+ },[mint,revision,tick])
+ const current=snapshot?.mint===mint?snapshot:null,trades=current?.trades??[],last=trades.at(-1),stale=current?now-Date.parse(current.fetchedAt)>60_000:false
+ const walletLabel=(address:string)=>{const marker=markers.get(address);return <a href={`https://solscan.io/account/${address}`} target="_blank" rel="noreferrer" title={address} className="text-accent inline-flex items-center gap-1.5 min-w-0"><span className="truncate">{marker?`${marker.kind==='watched'?'◈':'●'} ${marker.name}`:short(address)}</span><ExternalLink size={11} className="shrink-0"/></a>}
+ return <section className="workspace-card min-w-0"><div className="flex flex-wrap gap-4 justify-between items-start"><div><div className="eyebrow">CONFIRMED MARKET SAMPLE</div><h2 className="text-xl mt-2">Market & wallets</h2><p className="field-help mt-2">Pump.fun curve events · read-only · 0% OutSol fees</p></div><div className="flex gap-2 items-center"><button className="secondary-action" onClick={()=>setLive(value=>!value)} aria-pressed={live}>{live?'Pause refresh':'Resume refresh'}</button><button className="secondary-action" onClick={()=>setRevision(value=>value+1)} disabled={loading}><RefreshCw size={14} className={loading?'animate-spin':''}/>{loading?'Reading…':'Refresh'}</button></div></div>
+ {loading&&!current&&<div role="status" className="py-12 text-muted">Reading confirmed trade prices and largest token accounts…</div>}
+ {error&&<div role="alert" className="notice notice-error mt-6">{error}{current&&<p className="mt-1">The older snapshot below is retained with its original timestamp.</p>}</div>}
+ {current&&<div className="mt-6 space-y-6">
+ <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm"><div><span className="field-label">Last observed trade price</span><strong>{last?`${last.priceSol.toPrecision(6)} SOL`:'No observed price'}</strong></div><div><span className="field-label">Confirmed trades read</span><strong>{trades.length} events / {current.coverage.read} transactions</strong></div><div><span className="field-label">Snapshot</span><strong className={stale?'text-amber-300':''}>{new Date(current.fetchedAt).toLocaleTimeString()}{stale?' · stale':''}</strong></div></div>
+ {current.status!=='ready'&&<p className="notice">{current.status==='unsupported'?'A supported SOL-quoted Pump.fun curve could not be verified.':'Market data is temporarily unavailable.'}</p>}
+ <MarketChart candles={current.candles} trades={trades} markers={markers}/>
+ <div><h3 className="text-base">Latest observed trades</h3><p className="field-help mt-1">● Library / connected wallet · ◈ Watched address. Labels identify addresses and do not establish common ownership.</p>
+ {!trades.length?<p className="text-muted py-6">No supported successful curve trade events in the sampled transactions.</p>:<div className="divide-y divide-border mt-3">{[...trades].reverse().slice(0,24).map(trade=><div key={trade.id} className="py-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm"><div className="min-w-0">{walletLabel(trade.wallet)}<p className="text-xs text-muted mt-1">{new Date(trade.timestamp*1000).toLocaleTimeString()}</p></div><div><span className={trade.side==='buy'?'text-accent':'text-rose-300'}>{trade.side==='buy'?'Buy':'Sell'}</span><p className="text-xs mt-1">{formatEvidenceAmount(trade.tokenAmountRaw,current.decimals??6,4)} tokens</p></div><div className="text-xs sm:text-sm">{formatEvidenceAmount(trade.solAmountLamports,9,6)} SOL<p className="text-xs text-muted mt-1">{trade.priceSol.toPrecision(5)} / token</p></div><a className="text-xs text-accent inline-flex gap-1 items-center justify-self-end sm:justify-self-start" href={`https://solscan.io/tx/${trade.signature}`} target="_blank" rel="noreferrer">Transaction #{trade.ordinal}<ExternalLink size={11}/></a></div>)}</div>}</div>
+ <div className="border-t border-border pt-5"><h3 className="text-base">Largest token accounts · sampled owners</h3><p className="field-help mt-1">Up to 20 largest token accounts, grouped by their token-account authority. Curve and liquidity accounts can be included. Multiple accounts are combined; this is not a complete holder count or proof of common control.</p>
+ {current.distribution.status==='unavailable'?<p className="text-muted mt-4">Account distribution is unavailable in this snapshot.</p>:<><p className="text-sm mt-4">{current.distribution.sampledAccounts} accounts cover {current.distribution.sampledSupplyPct===null?'an unknown share':`${current.distribution.sampledSupplyPct.toFixed(2)}%`} of the mint supply · owner snapshot slot {current.distribution.slot?.toLocaleString()}</p><div className="space-y-3 mt-4">{current.distribution.owners.slice(0,10).map(owner=><div key={owner.owner}><div className="flex justify-between gap-4 text-sm"><span className="min-w-0">{walletLabel(owner.owner)}</span><span className="shrink-0 tabular-nums">{owner.supplyPct.toFixed(2)}% · {owner.accounts} {owner.accounts===1?'account':'accounts'}</span></div><div className="h-1 rounded mt-2 bg-white/5"><div className="h-full rounded bg-accent/60" style={{width:`${Math.min(100,owner.supplyPct)}%`}}/></div></div>)}</div></>}</div>
+ <div className="border-t border-border pt-4 space-y-2">{current.warnings.map(text=><p className="field-help" key={text}>{text}</p>)}{warning&&<p className="field-help">{warning}</p>}<p className="field-help">Trade prices are observed average execution prices before event fees, not executable quotes. No full-market or sniper-guard coverage is asserted.</p></div>
+ </div>}
+ </section>
+}

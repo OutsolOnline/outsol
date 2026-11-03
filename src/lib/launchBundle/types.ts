@@ -1,15 +1,20 @@
 import {PublicKey} from '@solana/web3.js'
+import {parseObservedBuyRule,type ObservedBuyRule} from '@/lib/tradingSessions/observedTrades'
 
 export interface LaunchBundleWallet {walletId:string;publicKey:string;name:string;buySol:number;delaySeconds:number;transferTo?:string}
 export interface LaunchBundleSettings {
- version:1;mode:'manual'|'block0'|'organic';groupId:string|null;wallets:LaunchBundleWallet[];intervalMinSeconds:number;intervalMaxSeconds:number
+ version:1;mode:'manual'|'block0'|'organic';groupId:string|null;wallets:LaunchBundleWallet[];intervalMinSeconds:number;intervalMaxSeconds:number;deferBuys?:boolean;stagedPlanId?:string;observedBuyGuard?:ObservedBuyRule
 }
 export const DEFAULT_LAUNCH_BUNDLE_SETTINGS:LaunchBundleSettings={version:1,mode:'manual',groupId:null,wallets:[],intervalMinSeconds:3,intervalMaxSeconds:10}
 export function launchBundleModeLabel(mode:LaunchBundleSettings['mode']):string{return mode==='block0'?'Block-0':mode==='organic'?'Organic':'Manual'}
+export function usesAutomaticLaunchBuyers(settings:LaunchBundleSettings):boolean{return settings.deferBuys!==true&&(settings.mode!=='manual'||settings.wallets.some(wallet=>wallet.buySol>0))}
 export function validateLaunchBundleSettings(settings:LaunchBundleSettings):string[]{
  const errors:string[]=[]
  if(!settings||typeof settings!=='object'||settings.version!==1||!['manual','block0','organic'].includes(settings.mode))return ['Choose a supported launch execution mode.']
  if(settings.groupId!==null&&(typeof settings.groupId!=='string'||!settings.groupId.trim()||settings.groupId.length>100))errors.push('Choose a valid wallet group.')
+ if(settings.deferBuys!==undefined&&typeof settings.deferBuys!=='boolean')errors.push('Choose a valid staged execution setting.')
+ if(settings.stagedPlanId!==undefined&&(typeof settings.stagedPlanId!=='string'||!settings.stagedPlanId||settings.stagedPlanId.length>100))errors.push('The staged plan reference is invalid.')
+ if(settings.observedBuyGuard!==undefined){try{parseObservedBuyRule(settings.observedBuyGuard);if(!settings.deferBuys)errors.push('The observed external-buy guard requires staged buyers.')}catch{errors.push('The observed external-buy guard threshold or whitelist is invalid.')}}
  if(!Array.isArray(settings.wallets)||settings.wallets.length>16)return [...errors,'Choose at most 16 buyer wallets.']
  const ids=new Set<string>(),addresses=new Set<string>()
  for(const wallet of settings.wallets){
@@ -25,20 +30,20 @@ export function validateLaunchBundleSettings(settings:LaunchBundleSettings):stri
  }
  const active=settings.wallets.filter(wallet=>wallet?.buySol>0)
  if(active.length&&!settings.groupId)errors.push('Choose the encrypted wallet group for these buyers.')
- if(settings.mode==='block0'&&active.length>3)errors.push('Block-0 supports at most three immediate buyer wallets; packet size can reduce this limit.')
+ if(!settings.deferBuys&&settings.mode==='block0'&&active.length>3)errors.push('Block-0 supports at most three immediate buyer wallets; packet size can reduce this limit.')
  if(!Number.isFinite(settings.intervalMinSeconds)||!Number.isFinite(settings.intervalMaxSeconds)||settings.intervalMinSeconds<0||settings.intervalMaxSeconds<settings.intervalMinSeconds||settings.intervalMaxSeconds>3600)errors.push('Organic intervals must be ordered between 0 and 3,600 seconds.')
  return errors
 }
 /** Public values only; absent legacy settings alone restore the default. */
 export function parseLaunchBundleSettings(value:unknown):LaunchBundleSettings{
  if(value===undefined)return {...DEFAULT_LAUNCH_BUNDLE_SETTINGS,wallets:[]}
- const fields=['version','mode','groupId','wallets','intervalMinSeconds','intervalMaxSeconds']
+ const fields=['version','mode','groupId','wallets','intervalMinSeconds','intervalMaxSeconds','deferBuys','stagedPlanId','observedBuyGuard']
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!fields.includes(key)))throw new Error('Launch bundle settings cannot be read.')
  const input=value as LaunchBundleSettings
  if(!Array.isArray(input.wallets))throw new Error('Buyer wallets cannot be read.')
  const walletFields=['walletId','publicKey','name','buySol','delaySeconds','transferTo']
  if(input.wallets.some(wallet=>!wallet||typeof wallet!=='object'||Object.keys(wallet).some(key=>!walletFields.includes(key))))throw new Error('Only public buyer settings can be saved.')
- const result:LaunchBundleSettings={version:input.version,mode:input.mode,groupId:input.groupId,wallets:input.wallets.map(wallet=>({walletId:wallet.walletId,publicKey:wallet.publicKey,name:wallet.name,buySol:wallet.buySol,delaySeconds:wallet.delaySeconds,...(wallet.transferTo===undefined?{}:{transferTo:wallet.transferTo})})),intervalMinSeconds:input.intervalMinSeconds,intervalMaxSeconds:input.intervalMaxSeconds}
+ const result:LaunchBundleSettings={version:input.version,mode:input.mode,groupId:input.groupId,wallets:input.wallets.map(wallet=>({walletId:wallet.walletId,publicKey:wallet.publicKey,name:wallet.name,buySol:wallet.buySol,delaySeconds:wallet.delaySeconds,...(wallet.transferTo===undefined?{}:{transferTo:wallet.transferTo})})),intervalMinSeconds:input.intervalMinSeconds,intervalMaxSeconds:input.intervalMaxSeconds,...(input.deferBuys===undefined?{}:{deferBuys:input.deferBuys}),...(input.stagedPlanId===undefined?{}:{stagedPlanId:input.stagedPlanId}),...(input.observedBuyGuard===undefined?{}:{observedBuyGuard:parseObservedBuyRule(input.observedBuyGuard)})}
  const errors=validateLaunchBundleSettings(result);if(errors.length)throw new Error(errors.join(' '))
  return result
 }

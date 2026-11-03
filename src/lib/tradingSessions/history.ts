@@ -34,6 +34,7 @@ function publicJournal(value:unknown):TradingSessionJournal {
  if(input.lastCapLamports!==undefined)result.lastCapLamports=amount(input.lastCapLamports)
  return result
 }
+export const parsePublicSessionJournal=publicJournal
 function savedHistory(storage:TradeStorage):TradingSessionJournal[] {
  const raw=storage.getItem(SESSION_HISTORY_KEY)
  if(!raw)return []

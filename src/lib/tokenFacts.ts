@@ -3,7 +3,7 @@ import {ExtensionType,getExtensionData,unpackMint,TOKEN_PROGRAM_ID,TOKEN_2022_PR
 import {unpack} from '@solana/spl-token-metadata'
 import {bondingCurvePda,feeSharingConfigPda,PUMP_FEE_PROGRAM_ID,PUMP_PROGRAM_ID,PUMP_SDK} from '@pump-fun/pump-sdk'
 import {withTimeout} from './transactions/http'
-export interface TokenFacts {mint:string;slot:number;checkedAt:string;decimals:number;supplyRaw:string;mintAuthority:string|null;freezeAuthority:string|null;tokenProgram:string;name?:string;symbol?:string;metadataUri?:string;metadataAuthority?:string|null;metadataPointerAuthority?:string|null;curveAddress:string;curveStatus:'active'|'graduated'|'unverified';curveSolRaw?:string;curveTokensRaw?:string;creator?:string;isHolderReward?:boolean;isCashbackCoin?:boolean;feeSharing?:{address:string;adminRevoked:boolean;shareholders:{address:string;shareBps:number}[]}}
+export interface TokenFacts {mint:string;slot:number;checkedAt:string;decimals:number;supplyRaw:string;mintAuthority:string|null;freezeAuthority:string|null;tokenProgram:string;name?:string;symbol?:string;metadataUri?:string;metadataAuthority?:string|null;metadataPointerAuthority?:string|null;curveAddress:string;curveStatus:'active'|'graduated'|'unverified';curveSolRaw?:string;curveTokensRaw?:string;creator?:string;isHolderReward?:boolean;isCashbackCoin?:boolean;feeSharing?:{address:string;admin:string;adminRevoked:boolean;shareholders:{address:string;shareBps:number}[]}}
 export function safeMetadataHref(uri?:string):string|undefined {try{const url=new URL(uri||'');return url.protocol==='https:'&&!url.username&&!url.password?url.href:undefined}catch{return undefined}}
 /** Mint and curve are decoded from one confirmed bank snapshot. No arbitrary metadata URL is fetched. */
 export async function readTokenFacts(connection:Connection,address:string):Promise<TokenFacts>{
@@ -27,7 +27,7 @@ export async function readTokenFacts(connection:Connection,address:string):Promi
    facts.curveStatus=decoded.complete?'graduated':'active';facts.curveSolRaw=decoded.realQuoteReserves.toString();facts.curveTokensRaw=decoded.realTokenReserves.toString();facts.creator=decoded.creator.toBase58();facts.isHolderReward=decoded.isHolderReward;facts.isCashbackCoin=decoded.isCashbackCoin
    if(decoded.creator.equals(sharingAddress)&&sharingInfo?.owner.equals(PUMP_FEE_PROGRAM_ID)){
     const sharing=PUMP_SDK.decodeSharingConfig(sharingInfo)
-    if(sharing.mint.equals(mint))facts.feeSharing={address:sharingAddress.toBase58(),adminRevoked:sharing.adminRevoked,shareholders:sharing.shareholders.map(share=>({address:share.address.toBase58(),shareBps:share.shareBps}))}
+    if(sharing.mint.equals(mint))facts.feeSharing={address:sharingAddress.toBase58(),admin:sharing.admin.toBase58(),adminRevoked:sharing.adminRevoked,shareholders:sharing.shareholders.map(share=>({address:share.address.toBase58(),shareBps:share.shareBps}))}
    }
   }
  }

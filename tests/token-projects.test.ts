@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Keypair } from '@solana/web3.js'
-import { readTokenProjects, saveTokenProject } from '../src/lib/tokenProjects'
+import { archiveTokenProject, exportTokenProjects, importTokenProjects, readTokenProjects, saveTokenProject } from '../src/lib/tokenProjects'
 const mint = Keypair.fromSeed(new Uint8Array(32).fill(31)).publicKey.toBase58()
 function store() { const values = new Map<string,string>(); return { getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v)} } }
 describe('persistent public token workspaces',()=>{
@@ -18,5 +18,26 @@ describe('persistent public token workspaces',()=>{
  })
  it('accepts only safe public metadata links',()=>{
   expect(()=>saveTokenProject({mint,name:'X',symbol:'X',metadataUri:'javascript:alert(1)'},store())).toThrow()
+ })
+ it('archives and restores without losing notes, identity or public associations',()=>{
+  const storage=store()
+  saveTokenProject({mint,name:'Project',symbol:'P',notes:'Private plan',labels:['Team'],walletAddresses:[mint]},storage)
+  archiveTokenProject(mint,true,storage)
+  expect(readTokenProjects(storage)[0]).toMatchObject({notes:'Private plan',labels:['Team'],walletAddresses:[mint],archivedAt:expect.any(String)})
+  saveTokenProject({mint,name:'Updated',symbol:'P'},storage)
+  expect(readTokenProjects(storage)[0].archivedAt).toBeTruthy()
+  archiveTokenProject(mint,false,storage)
+  expect(readTokenProjects(storage)[0].archivedAt).toBeUndefined()
+ })
+ it('exports a public handoff without notes by default and imports atomically',()=>{
+  const storage=store();saveTokenProject({mint,name:'Project',symbol:'P',notes:'PRIVATE NOTE'},storage)
+  const text=exportTokenProjects(readTokenProjects(storage))
+  expect(text).not.toContain('PRIVATE NOTE')
+  const destination=store();importTokenProjects(text,destination)
+  expect(readTokenProjects(destination)).toMatchObject([{mint,name:'Project'}])
+  expect(exportTokenProjects(readTokenProjects(storage),true)).toContain('PRIVATE NOTE')
+  const before=JSON.stringify(readTokenProjects(destination))
+  expect(()=>importTokenProjects('{"type":"outsol-projects","version":1,"projects":[{"mint":"invalid"}]}',destination)).toThrow()
+  expect(JSON.stringify(readTokenProjects(destination))).toBe(before)
  })
 })

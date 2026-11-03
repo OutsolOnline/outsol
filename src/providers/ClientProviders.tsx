@@ -11,6 +11,7 @@ import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare'
 import { getRpcEndpoint } from '@/lib/rpc'
 import { usePlatformWalletStore } from '@/stores/walletStore'
 import {useWalletLibraryStore} from '@/stores/walletLibraryStore'
+import {WorkspacePreferencesProvider} from './WorkspacePreferencesProvider'
 
 // Import wallet adapter styles
 import '@solana/wallet-adapter-react-ui/styles.css'
@@ -48,7 +49,7 @@ export const ClientProviders: FC<ClientProvidersProps> = ({ children }) => {
   return (
     <ConnectionProvider endpoint={getRpcEndpoint()}>
       <SolanaWalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
+        <WalletModalProvider><WorkspacePreferencesProvider/>{children}</WalletModalProvider>
       </SolanaWalletProvider>
     </ConnectionProvider>
   )

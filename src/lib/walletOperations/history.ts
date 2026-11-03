@@ -1,5 +1,7 @@
 import bs58 from 'bs58'
 import {assertNoUnresolvedRelay} from '../relay/pendingGuard'
+import {assertNoPendingCreatorOperation} from '../creatorOperations/history'
+import {assertNoUnresolvedSupplyLock} from '../supplyLocks/pendingGuard'
 import { publicAddress, type WalletOperationIntent } from './model'
 
 export const WALLET_OPERATION_PENDING_KEY = 'vanity-wallet-operation-pending-v1'
@@ -10,10 +12,15 @@ export interface WalletOperationReceipt extends PendingWalletOperation { status:
 function target(storage?: WalletOperationStorage) { if (storage) return storage; if (typeof localStorage === 'undefined') throw new Error('Wallet recovery storage is unavailable.'); return localStorage }
 function amount(value: unknown) { if (typeof value !== 'string' || !/^(0|[1-9]\d{0,19})$/.test(value) || BigInt(value) > 18446744073709551615n) throw new Error('Invalid wallet operation amount.'); return value }
 export function publicWalletOperationIntent(input: WalletOperationIntent): WalletOperationIntent {
-  if (!input || !['sol', 'token', 'close'].includes(input.kind)) throw new Error('Invalid wallet operation.')
+  if (!input || !['sol', 'token', 'close','burn'].includes(input.kind)) throw new Error('Invalid wallet operation.')
   const payer = publicAddress(input.payer, true), priorityLamports = amount(input.priorityLamports)
   if (BigInt(priorityLamports) > 10000000n) throw new Error('Invalid priority fee budget.')
   const base = { kind: input.kind, payer, priorityLamports }
+  if(input.kind==='burn'){
+    const burnRaw=amount(input.burnRaw)
+    if(burnRaw==='0'||!Number.isInteger(input.decimals)||input.decimals!<0||input.decimals!>255)throw new Error('The burn amount or token decimals are invalid.')
+    return {...base,mint:publicAddress(input.mint),sourceAccount:publicAddress(input.sourceAccount),tokenProgram:publicAddress(input.tokenProgram),decimals:input.decimals,burnRaw}
+  }
   if (input.kind === 'close') {
     if (!Array.isArray(input.closeAccounts) || !input.closeAccounts.length || input.closeAccounts.length > 8) throw new Error('Invalid account cleanup list.')
     const closeAccounts = input.closeAccounts.map(value => ({ address: publicAddress(value.address), mint: publicAddress(value.mint), tokenProgram: publicAddress(value.tokenProgram) }))
@@ -36,7 +43,7 @@ export function readPendingWalletOperation(storage?: WalletOperationStorage): Pe
   try { const raw = target(storage).getItem(WALLET_OPERATION_PENDING_KEY); if (!raw) return null; if (raw.length > 10000) throw new Error(); return pending(JSON.parse(raw)) }
   catch { throw new Error('Wallet recovery data cannot be read. Preserve browser data and check your last signature before sending again.') }
 }
-export function assertNoPendingWalletOperation(storage?: WalletOperationStorage) { if (readPendingWalletOperation(storage)) throw new Error('A wallet operation is pending confirmation. Open Wallet operations and check it before continuing.'); assertNoUnresolvedRelay(storage) }
+export function assertNoPendingWalletOperation(storage?: WalletOperationStorage) { if (readPendingWalletOperation(storage)) throw new Error('A wallet operation is pending confirmation. Open Wallet operations and check it before continuing.'); assertNoUnresolvedRelay(storage);assertNoPendingCreatorOperation(storage);assertNoUnresolvedSupplyLock(storage) }
 export function savePendingWalletOperation(input: PendingWalletOperation, storage?: WalletOperationStorage) {
   const storageTarget = target(storage), record = pending(input)
   assertNoPendingWalletOperation(storageTarget)

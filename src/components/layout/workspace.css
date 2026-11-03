@@ -884,3 +884,12 @@ html body { color: var(--workspace-text); font-size: 14px; line-height: 1.65; le
 .footer-socials { display:flex; gap:20px; margin-left:auto; align-items:center; }
 .footer-socials a:hover { color:#edf2ef; }
 @media(max-width:600px) { .footer-socials { gap:16px; } }
+
+/* Saved, validated workspace palettes share the same semantic token system. */
+html[data-outsol-theme="custom"] .app-header,
+html[data-outsol-theme="custom"] .workspace-sidebar { background: var(--workspace-bg); border-color: var(--workspace-border); }
+html[data-outsol-theme="custom"] .secondary-action,
+html[data-outsol-theme="custom"] .app-header .wallet-adapter-button { background: var(--workspace-elevated) !important; color: var(--workspace-text) !important; border-color: var(--workspace-border) !important; }
+html[data-outsol-theme="custom"] .workspace-main input:not([type="checkbox"]):not([type="color"]):not([type="file"]),
+html[data-outsol-theme="custom"] .workspace-main textarea,
+html[data-outsol-theme="custom"] .workspace-main select { background: var(--workspace-bg); color: var(--workspace-text); border-color: var(--workspace-border); }

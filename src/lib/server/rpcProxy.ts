@@ -1,5 +1,6 @@
 import { PublicKey, VersionedTransaction } from '@solana/web3.js'
 import { isAllowedRequestOrigin } from './requestOrigin'
+import {createTransactionRacer,readSubmissionProviders} from './providerRacing'
 
 const METHODS = new Set([
   'getAccountInfo', 'getMultipleAccounts', 'getProgramAccounts', 'getBalance', 'getLatestBlockhash', 'getEpochInfo', 'getGenesisHash', 'getBlockTime',
@@ -95,6 +96,7 @@ function validateCall(value: unknown): boolean {
 
 /** Limits are per process; use Railway edge limits as an additional shared boundary. */
 export function createRpcHandler(upstreamFetch: typeof fetch = fetch) {
+  const raceTransaction=createTransactionRacer(upstreamFetch)
   const clients = new Map<string, { count: number; expires: number }>()
   let globalWindow = { count: 0, expires: 0 }
   return async function handleRpc(request: Request): Promise<Response> {
@@ -130,6 +132,10 @@ export function createRpcHandler(upstreamFetch: typeof fetch = fetch) {
       if (!endpoint) return reject(503, 'RPC provider is not configured')
       const provider = new URL(endpoint)
       if (provider.protocol !== 'https:' && !(process.env.NODE_ENV !== 'production' && provider.hostname === 'localhost')) return reject(503, 'RPC provider is not configured')
+      if(!Array.isArray(body)&&calls[0].method==='sendTransaction'&&process.env.RPC_RACE_URLS){
+        const result=await raceTransaction(body,readSubmissionProviders())
+        return Response.json(result,{headers})
+      }
       const response = await upstreamFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15_000), cache: 'no-store', redirect: 'error' })
       if (!response.ok) return reject(response.status === 429 ? 429 : 502, 'RPC provider unavailable')
       const data = JSON.parse(await boundedText(response.body, MAX_RESPONSE))

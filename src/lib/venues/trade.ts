@@ -4,6 +4,7 @@ import {bondingCurvePda,PUMP_PROGRAM_ID,PUMP_SDK} from '@pump-fun/pump-sdk'
 import {buildNativeBuyTransaction,buildSellTransaction} from '@/lib/pumpfun/api'
 import {validatePumpTransaction} from '@/lib/transactions/validatePumpTransaction'
 import {fetchBounded,withTimeout} from '@/lib/transactions/http'
+import {resolveSellAmountRaw} from '@/lib/pumpfun/sellAmount'
 
 export interface TradeInput{action:'buy'|'sell';mint:string;payer:string;buySol:string;sellPercent:number;slippage:number;priorityFeeSol:number}
 export interface TokenPosition{mint:string;payer:string;decimals:number;tokenRaw:string;solLamports:string;tokenProgram:string;ata:string;status:'active'|'graduated'|'unsupported'}
@@ -87,15 +88,16 @@ export async function simulateTradePreview(connection:Connection,transaction:Ver
 }
 
 /** Read-only construction and unsigned simulation. No wallet keys or sends. */
-export async function preparePumpTrade(connection:Connection,input:TradeInput):Promise<PreparedTrade>{
+export async function preparePumpTrade(connection:Connection,input:TradeInput,options:{exactSellAmountRaw?:string}={}):Promise<PreparedTrade>{
+  if(input.action!=='sell'&&options.exactSellAmountRaw!==undefined)throw new Error('An exact token sale amount requires a sell action.')
   const limits=validateTradeInput(input),position=await readTokenPosition(connection,input.mint,input.payer)
   if(position.status!=='active')throw new Error(position.status==='graduated'?'This token graduated. Use its canonical trading venue below.':'Native trading here supports active SOL Pump.fun curves. Use the token’s launch venue below.')
-  const maxSellRaw=input.action==='sell'?BigInt(position.tokenRaw)*BigInt(input.sellPercent)/100n:0n
+  const maxSellRaw=input.action==='sell'?resolveSellAmountRaw(BigInt(position.tokenRaw),input.sellPercent,options.exactSellAmountRaw):0n
   if(input.action==='sell'&&maxSellRaw===0n)throw new Error('No associated token balance is available to sell')
   let transaction:VersionedTransaction
   if(input.action==='buy')transaction=await buildNativeBuyTransaction({connection,userPublicKey:input.payer,mintAddress:input.mint,maxBuyAmountSol:Number(limits.maxBuyLamports)/1e9,slippage:input.slippage,priorityFee:input.priorityFeeSol})
   else{
-    const built=await buildSellTransaction({connection,userPublicKey:input.payer,mintAddress:input.mint,sellPercent:input.sellPercent,slippage:input.slippage,priorityFee:input.priorityFeeSol})
+    const built=await buildSellTransaction({connection,userPublicKey:input.payer,mintAddress:input.mint,sellPercent:input.sellPercent,slippage:input.slippage,priorityFee:input.priorityFeeSol,...(options.exactSellAmountRaw===undefined?{}:{exactSellAmountRaw:options.exactSellAmountRaw})})
     if(!built.success||!built.transaction)throw new Error(built.error||'Native sell construction failed')
     transaction=built.transaction
   }

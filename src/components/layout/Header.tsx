@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import { Activity, FolderClosed, Grid2X2, Layers3, Menu, Rocket, Wallet, X } from 'lucide-react'
+import { Activity, FolderClosed, Grid2X2, Layers3, Menu, Rocket, Settings, Wallet, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CommandPalette } from './CommandPalette'
 import { NetworkStatus } from './NetworkStatus'
@@ -18,6 +18,7 @@ const navigation = [
   { name: 'Library', href: '/library', icon: FolderClosed },
   { name: 'Activity', href: '/activity', icon: Activity },
   { name: 'Tools', href: '/tools', icon: Grid2X2 },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 const pageNames: Record<string, string> = { '/': 'OutSol', '/launches': 'Launches', '/launch': 'New launch', '/wallet-operations': 'Wallets', '/wallet': 'Wallets', '/library': 'Library', '/drafts': 'Saved designs', '/artwork': 'Artwork', '/activity': 'Activity', '/tools': 'Tools', '/planner': 'Launch planner', '/rehearse': 'Launch rehearsal', '/vanity': 'Vanity addresses', '/inspect': 'Wallet inspector', '/manage': 'Manage token', '/bundler': 'Wallet bundles', '/projects': 'Token workspaces', '/extension': 'Browser extension', '/x': 'Launch from X', '/tracker': 'X tracker', '/relay': 'Relay wallets', '/sniper': 'Launch discovery', '/automations': 'Trading sessions', '/multi-launch': 'Multi-launch' }
 
@@ -26,8 +27,8 @@ export function Header() {
   const [mounted, setMounted] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const currentPage = pageNames[pathname] ?? (pathname.startsWith('/token/') ? 'Token workspace' : pathname.startsWith('/verify/') ? 'Token verification' : 'OutSol')
-  const activeHref = ['/wallet', '/wallet-operations', '/relay'].includes(pathname) ? '/wallet-operations' : ['/library', '/drafts', '/artwork'].includes(pathname) ? '/library' : pathname === '/activity' ? '/activity' : pathname === '/bundler' ? '/bundler' : ['/tools', '/vanity', '/inspect', '/manage', '/manual', '/extension', '/x', '/tracker', '/sniper', '/automations', '/multi-launch'].includes(pathname) ? '/tools' : '/launches'
+  const currentPage = pathname==='/settings'?'Workspace settings':pathname==='/watchlist'?'Wallet watchlist':pathname==='/funder'?'Funder':pathname==='/clone'?'Import token design':pageNames[pathname] ?? (pathname.startsWith('/token/') ? 'Token workspace' : pathname.startsWith('/verify/') ? 'Token verification' : 'OutSol')
+  const activeHref = pathname==='/settings'?'/settings':['/wallet', '/wallet-operations', '/relay','/funder'].includes(pathname) ? '/wallet-operations' : ['/library', '/drafts', '/artwork','/clone'].includes(pathname) ? '/library' : pathname === '/activity' ? '/activity' : pathname === '/bundler' ? '/bundler' : ['/tools', '/vanity', '/inspect', '/manage', '/manual', '/extension', '/x', '/tracker', '/watchlist', '/sniper', '/automations', '/multi-launch'].includes(pathname) ? '/tools' : '/launches'
 
   useEffect(() => setMounted(true), [])
   useEffect(() => setMenuOpen(false), [pathname])

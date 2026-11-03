@@ -121,7 +121,7 @@ export async function prepareMarketSale(connection:Connection,value:MarketSaleIn
  if(mintState.decimals!==input.decimals||!tokens.owner.equals(payer)||!tokens.mint.equals(mint)||tokens.isFrozen||!tokens.isInitialized||tokens.isNative||tokens.amount<amount(input.amountRaw))throw new Error('The wallet token balance, mint, or token state changed. Scan again.')
  let transaction:VersionedTransaction,lastValidBlockHeight:number,route:'pump'|'jupiter',minimum:bigint,quoted:bigint,setups=new Set<string>(),rentCeiling:bigint,tables:AddressLookupTableAccount[]=[]
  if(curveInfo?.owner.equals(PUMP_PROGRAM_ID)&&!PUMP_SDK.decodeBondingCurve(curveInfo).complete){
-  const native=await preparePumpTrade(connection,{action:'sell',mint:input.mint,payer:input.payer,buySol:'0',sellPercent:100,slippage:input.slippageBps/100,priorityFeeSol:Number(amount(input.priorityFeeLamports))/1e9})
+  const native=await preparePumpTrade(connection,{action:'sell',mint:input.mint,payer:input.payer,buySol:'0',sellPercent:100,slippage:input.slippageBps/100,priorityFeeSol:Number(amount(input.priorityFeeLamports))/1e9},{exactSellAmountRaw:input.amountRaw})
   if(native.maxSellRaw!==input.amountRaw)throw new Error('The native sale balance changed. Scan and review again.')
   transaction=native.transaction;route='pump';minimum=BigInt(native.minimumSolOut);quoted=BigInt(native.solChangeLamports)+BigInt(native.networkFeeLamports);rentCeiling=10000000n
   if(floor>minimum){

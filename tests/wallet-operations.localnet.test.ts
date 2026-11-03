@@ -56,6 +56,17 @@ async function makeMint(payer: Keypair, program: PublicKey) {
 }
 
 describe.skipIf(process.env.RUN_WALLET_LOCALNET !== '1')('reviewed wallet operations signed on isolated Surfpool',()=>{
+  it.each([TOKEN_PROGRAM_ID,TOKEN_2022_PROGRAM_ID])('burns exact tokens with a verified permanent supply decrease (%s)',async program=>{
+    const payer=await fund(),{mint,source}=await makeMint(payer,program),storage=memory(),before=unpackMint(mint,await connection.getAccountInfo(mint),program).supply
+    const plan=await prepareWalletOperation(connection,{kind:'burn',payer:payer.publicKey.toBase58(),mint:mint.toBase58(),sourceAccount:source.toBase58(),amount:'12.345678',priorityFeeSol:'0'})
+    expect(plan.preview.supplyBeforeRaw).toBe('12345678901');expect(plan.preview.supplyAfterRaw).toBe('12333333223')
+    const result=await submitReviewedWalletOperation(connection,plan,{approved:true,storage,locks,readSigner:()=>payer.publicKey.toBase58(),assertAvailable:()=>{},signTransaction:async tx=>{tx.sign([payer]);return tx},timeoutMs:10000,pollIntervalMs:50})
+    expect(result.receipt.status,result.receipt.error).toBe('confirmed')
+    expect(unpackMint(mint,await connection.getAccountInfo(mint),program).supply).toBe(before-12345678n)
+    expect(unpackAccount(source,await connection.getAccountInfo(source),program).amount).toBe(before-12345678n)
+    expect(readWalletOperationHistory(storage)[0]).toMatchObject({kind:'burn',burnRaw:'12345678',status:'confirmed'})
+    console.log(JSON.stringify({proof:'signed-local-surfpool-supply-burn',realSolSpent:false,program:program.toBase58(),signature:result.receipt.signature,supplyAfter:plan.preview.supplyAfterRaw}))
+  },60000)
   it('funds multiple recipients with exact reviewed SOL amounts, costs and remaining balance',async()=>{
     const payer=await fund(), recipients=[Keypair.generate().publicKey,Keypair.generate().publicKey],storage=memory()
     const plan=await prepareWalletOperation(connection,{kind:'sol',payer:payer.publicKey.toBase58(),priorityFeeSol:'0.00001',recipients:[{address:recipients[0].toBase58(),amount:'0.01'},{address:recipients[1].toBase58(),amount:'0.02'}]})

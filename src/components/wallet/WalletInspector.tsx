@@ -63,6 +63,8 @@ export function WalletInspector() {
   useEffect(() => {
     const state = lifecycle.current
     state.mounted = true
+    const requested=new URLSearchParams(window.location.search).get('address')
+    if(requested)setAddress(requested.slice(0,44))
     return () => { state.mounted = false; state.scan++ }
   }, [])
   useEffect(() => {

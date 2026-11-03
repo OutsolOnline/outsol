@@ -1,7 +1,7 @@
 import { PLATFORM_FEE_BPS } from './launchConfig'
 
-export const FEE_SOURCES_CHECKED_AT = '2026-10-27'
-export const FEE_SOURCES_CHECKED_LABEL = '27 October 2026'
+export const FEE_SOURCES_CHECKED_AT = '2026-11-03'
+export const FEE_SOURCES_CHECKED_LABEL = '3 November 2026'
 export const VANITY_FEE_POLICY = { basisPoints: PLATFORM_FEE_BPS, headline: '0% OutSol platform fees. Forever.', detail: 'OutSol adds no launch fee, trading cut or subscription. External transaction costs remain separate.' } as const
 
 export interface PlatformFeeReference {
@@ -23,8 +23,8 @@ export const PLATFORM_FEE_REFERENCES: PlatformFeeReference[] = [
   },
   {
     name: 'Proxima', verified: true,
-    operations: [{ label: 'Sell proceeds', charge: '5%' }, { label: 'Creator-reward claims', charge: '5%' }],
-    note: 'Standard sell and claim rates. Its terms list other operation-specific fees and allow license-specific rates; the final confirmation is authoritative. These percentages do not describe token-creation fees.',
+    operations: [{ label: 'Buy amount / sell proceeds', charge: '2.5%' }, { label: 'Creator-reward claims', charge: '2.5%' },{label:'Streamflow locks',charge:'0.5%'}],
+    note: 'The current fee guide and terms agree on these rates. Volume Bot rates conflict: the guide lists 0.25%, while terms §9 lists 1% per side. License-specific rates and the final operation preview govern. These percentages do not describe token-creation fees.',
     sources: [{ label: 'Official fee docs', href: 'https://docs.proxima.tools/other/platform-fees/' }, { label: 'Current terms, §9', href: 'https://proxima.tools/terms/' }],
   },
   {

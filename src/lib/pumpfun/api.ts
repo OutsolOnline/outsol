@@ -9,6 +9,7 @@ import { sendAndConfirmTransaction } from '@/lib/transactions/send'
 import { createVerifiedJitoTipTransaction } from '@/lib/bundler/jito'
 import {resolveCreatorFeeRouting,parseResolvedCreatorFeeRouting,migrateLegacyCreatorFeeSelection,assertCreatorFeeRoutingAvailable,type SupportedCreatorFeeSelection,type VerifiedGitHubIndividual,type ResolvedCreatorFeeRouting} from '@/lib/creatorFeeRouting'
 import {validatePumpLaunchPlan,type NativePumpLaunchPlan,type NativePumpLaunchStep} from '@/lib/transactions/validatePumpLaunchPlan'
+import {resolveSellAmountRaw} from './sellAmount'
 
 // Use our own API route to proxy to Pump.fun (avoids CORS)
 const IPFS_PROXY_API = '/api/ipfs'
@@ -352,6 +353,8 @@ export async function buildSellTransaction(params: {
   userPublicKey: string
   mintAddress: string
   sellPercent: number // 0-100
+  /** Exact reviewed raw token amount; otherwise preserve percentage behavior. */
+  exactSellAmountRaw?: string
   slippage?: number
   priorityFee?: number
   connection?: Connection
@@ -370,7 +373,7 @@ export async function buildSellTransaction(params: {
     const [global,feeConfig,state,account,{blockhash}]=await Promise.all([withTimeout(online.fetchGlobal()),withTimeout(online.fetchFeeConfig()),withTimeout(online.fetchSellState(mint,payer,tokenProgram)),withTimeout(getAccount(connection,getAssociatedTokenAddressSync(mint,payer,false,tokenProgram),'confirmed',tokenProgram)),withTimeout(connection.getLatestBlockhash('confirmed'))])
     if (state.bondingCurve.complete) throw new Error('This token graduated; use a supported AMM trading route')
     if (!state.quoteMint.equals(NATIVE_MINT)) throw new Error('Only SOL-quoted curves are supported')
-    const amount=new BN(account.amount.toString()).muln(Math.floor(sellPercent*100)).divn(10000)
+    const amount=new BN(resolveSellAmountRaw(account.amount,sellPercent,params.exactSellAmountRaw).toString())
     if (amount.isZero()) throw new Error('No token balance to sell')
     const solAmount=getSellSolAmountFromTokenAmount({global,feeConfig,mintSupply:state.bondingCurve.tokenTotalSupply,bondingCurve:state.bondingCurve,amount})
     const instructions=await PUMP_SDK.sellInstructions({global,...state,mint,user:payer,amount,solAmount,slippage,tokenProgram,mayhemMode:state.bondingCurve.isMayhemMode,cashback:state.bondingCurve.isCashbackCoin})

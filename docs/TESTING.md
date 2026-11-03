@@ -12,7 +12,7 @@ npm audit --omit=dev --audit-level=low
 npm run build
 ```
 
-These checks do not depend on GitHub Actions. After they pass locally, pushing the reviewed commit to the private repository's `main` branch triggers Railway's connected-source Docker build. Its builder repeats these gates automatically and then runs the application's health check; a failed gate stops the new deployment. Railway caps the regression run at two workers to bound build memory. Type generation prepares Next's ignored declarations for a clean checkout. The default regression run does not require RPC secrets, wallet exports or the excluded execution scripts, and network/local-VM suites remain opt-in. Tests are included only in the build stage, not copied into the final runtime image.
+These checks do not depend on GitHub Actions. After they pass locally, deploying the reviewed public organization repository's `main` branch triggers Railway's Docker build (through the connected source or the authorized Railway CLI upload). Its builder repeats these gates automatically and then runs the application's health check; a failed gate stops the new deployment. Railway caps the regression run at two workers to bound build memory. Type generation prepares Next's ignored declarations for a clean checkout. The default regression run does not require RPC secrets, wallet exports or the excluded execution scripts, and network/local-VM suites remain opt-in. Tests are included only in the build stage, not copied into the final runtime image.
 
 The Pump launch checks below use actual program execution. The default suite keeps network and local execution opt-in.
 

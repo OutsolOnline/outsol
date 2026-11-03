@@ -12,24 +12,24 @@ const config: Config = {
     extend: {
       colors: {
         // OutSol product palette
-        background: '#111315',
-        surface: '#191D20',
-        'surface-elevated': '#20262A',
-        foreground: '#EDF2EF',
-        muted: '#7F8D86',
-        'text-secondary': '#ADB8B3',
-        'muted-dim': '#7F8D86',
-        accent: '#C5D7E3',
-        border: '#2D3539',
+        background: 'var(--workspace-bg, #111315)',
+        surface: 'var(--workspace-surface, #191D20)',
+        'surface-elevated': 'var(--workspace-elevated, #20262A)',
+        foreground: 'var(--workspace-text, #EDF2EF)',
+        muted: 'var(--workspace-muted, #7F8D86)',
+        'text-secondary': 'var(--workspace-secondary, #ADB8B3)',
+        'muted-dim': 'var(--workspace-muted, #7F8D86)',
+        accent: 'var(--mint, #C5D7E3)',
+        border: 'var(--workspace-border, #2D3539)',
         
         // Semantic
         primary: {
-          DEFAULT: '#C5D7E3',
+          DEFAULT: 'var(--mint, #C5D7E3)',
           foreground: '#111315',
         },
         secondary: {
-          DEFAULT: '#20262A',
-          foreground: '#ADB8B3',
+          DEFAULT: 'var(--workspace-elevated, #20262A)',
+          foreground: 'var(--workspace-secondary, #ADB8B3)',
         },
         destructive: {
           DEFAULT: '#6B4444',

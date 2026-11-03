@@ -5,7 +5,9 @@ export const MAX_LIBRARY_WALLETS = 100
 export const MAX_WALLET_BATCH = 20
 export const MAX_GROUP_WALLETS = 20
 export interface WalletSummary { id:string; name:string; publicKey:string; createdAt:string }
-export interface WalletLibraryGroup { id:string; name:string; walletIds:string[]; createdAt:string; updatedAt:string }
+export const WALLET_GROUP_COLORS=['mint','blue','violet','amber','rose','slate'] as const
+export type WalletGroupColor=typeof WALLET_GROUP_COLORS[number]
+export interface WalletLibraryGroup { id:string; name:string; walletIds:string[]; createdAt:string; updatedAt:string;color?:WalletGroupColor;archivedAt?:string }
 export interface StoredLibraryWallet extends WalletSummary { vault:WalletVault }
 export interface WalletLibraryRecord { version:1; revision:number; wallets:StoredLibraryWallet[]; groups:WalletLibraryGroup[]; legacyImported:boolean }
 export interface WalletLibraryStorage { getItem(key:string):string|null; setItem(key:string,value:string):void }

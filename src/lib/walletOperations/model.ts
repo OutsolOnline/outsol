@@ -6,13 +6,15 @@ export interface WalletRecipientInput { address: string; amount: string }
 export type WalletOperationInput = { payer: string; priorityFeeSol: string } & (
   { kind: 'sol'; recipients: WalletRecipientInput[] } |
   { kind: 'token'; mint: string; sourceAccount?: string; recipients: WalletRecipientInput[] } |
+  { kind: 'burn'; mint:string;sourceAccount?:string;amount:string } |
   { kind: 'close'; accounts: string[] }
 )
 export interface WalletOperationRecipient { address: string; rawAmount: string; tokenAccount?: string }
 export interface WalletOperationIntent {
-  kind: 'sol' | 'token' | 'close'; payer: string; priorityLamports: string
+  kind: 'sol' | 'token' | 'close' | 'burn'; payer: string; priorityLamports: string
   recipients?: WalletOperationRecipient[]; mint?: string; sourceAccount?: string; tokenProgram?: string; decimals?: number
   closeAccounts?: { address: string; mint: string; tokenProgram: string }[]
+  burnRaw?:string
 }
 export function publicAddress(value: unknown, wallet = false): string {
   if (typeof value !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) throw new Error('Enter a valid Solana address.')
@@ -34,11 +36,15 @@ export function formatUnits(raw: string | bigint, decimals: number): string {
   return `${negative ? '-' : ''}${decimals ? digits.slice(0, -decimals) : digits}${fraction ? `.${fraction}` : ''}`
 }
 export function normalizeOperationInput(input: WalletOperationInput): WalletOperationInput {
-  if (!input || !['sol', 'token', 'close'].includes(input.kind)) throw new Error('Choose a wallet operation.')
+  if (!input || !['sol', 'token', 'close','burn'].includes(input.kind)) throw new Error('Choose a wallet operation.')
   const payer = publicAddress(input.payer, true)
   const priority = parseExactUnits(input.priorityFeeSol, 9, true)
   if (priority > 10000000n) throw new Error('Priority fee must be between 0 and 0.01 SOL.')
   const base = { payer, priorityFeeSol: input.priorityFeeSol }
+  if(input.kind==='burn'){
+    if(typeof input.amount!=='string'||input.amount.length>280||!/^(0|[1-9]\d*)(\.\d+)?$/.test(input.amount)||!/[1-9]/.test(input.amount))throw new Error('Enter a positive exact token amount to burn.')
+    return {...base,kind:'burn',mint:publicAddress(input.mint),amount:input.amount,...(input.sourceAccount?{sourceAccount:publicAddress(input.sourceAccount)}:{})}
+  }
   if (input.kind === 'close') {
     if (!Array.isArray(input.accounts) || !input.accounts.length || input.accounts.length > 8) throw new Error('Select between one and eight empty token accounts.')
     const accounts = input.accounts.map(value => publicAddress(value))

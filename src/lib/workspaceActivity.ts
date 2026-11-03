@@ -7,20 +7,31 @@ import type {WalletOperationIntent} from './walletOperations/model'
 import { BUNDLE_PENDING_KEY, BUNDLE_RECEIPT_KEY, readPendingBundleReceipt, readSavedBundleReceipt } from './bundler/pending'
 import type { BundleResult } from './bundler/types'
 import { GROUP_OPERATION_HISTORY_KEY, GROUP_OPERATION_PENDING_KEY, publicGroupOperation } from './walletGroups/history'
+import {RELAY_RECEIPTS_KEY} from './relay/history'
+import {SALE_HISTORY_KEY} from './sales/history'
+import {SESSION_HISTORY_KEY} from './tradingSessions/history'
+import {BATCH_JOURNAL_KEY} from './multiLaunch/history'
+import {mergeActivityEvidence,readOperationActivity} from './operationActivity'
+import {CREATOR_PENDING_KEY,CREATOR_HISTORY_KEY} from './creatorOperations/history'
+import {BUY_PLAN_HISTORY_KEY} from './buyPlans/history'
+import {SUPPLY_LOCK_PENDING_KEY,SUPPLY_LOCK_HISTORY_KEY} from './supplyLocks/history'
+import {STRATEGY_QUEUE_HISTORY_KEY} from './tradingSessions/queueHistory'
+import {CONSOLIDATION_KEY} from './consolidation/model'
 
 export type ActivityFilter = 'all' | 'launches' | 'trades' | 'wallets' | 'bundles' | 'pending'
 export interface WorkspaceActivityItem {
   id: string
-  kind: 'launch' | 'trade' | 'setup' | 'wallet' | 'bundle' | 'group'
+  kind: 'launch' | 'trade' | 'setup' | 'wallet' | 'bundle' | 'group' | 'relay' | 'sale' | 'session' | 'creator' | 'buy-plan' | 'lock' | 'queue' | 'consolidation'
   status: 'confirmed' | 'failed' | 'pending' | 'partial'
   mint: string
   venue: string
   timestamp: string | null
   signatures: string[]
   description: string
+  recoveryHref?:string
 }
 export interface WorkspaceActivitySnapshot { items: WorkspaceActivityItem[]; warnings: string[] }
-export const WORKSPACE_ACTIVITY_KEYS = [RECEIPTS_KEY, TRADE_HISTORY_KEY, PENDING_KEY, TRADE_PENDING_KEY,WALLET_OPERATION_HISTORY_KEY,WALLET_OPERATION_PENDING_KEY,BUNDLE_RECEIPT_KEY,BUNDLE_PENDING_KEY,GROUP_OPERATION_HISTORY_KEY,GROUP_OPERATION_PENDING_KEY] as const
+export const WORKSPACE_ACTIVITY_KEYS = [RECEIPTS_KEY, TRADE_HISTORY_KEY, PENDING_KEY, TRADE_PENDING_KEY,WALLET_OPERATION_HISTORY_KEY,WALLET_OPERATION_PENDING_KEY,BUNDLE_RECEIPT_KEY,BUNDLE_PENDING_KEY,GROUP_OPERATION_HISTORY_KEY,GROUP_OPERATION_PENDING_KEY,RELAY_RECEIPTS_KEY,SALE_HISTORY_KEY,SESSION_HISTORY_KEY,BATCH_JOURNAL_KEY,CREATOR_PENDING_KEY,CREATOR_HISTORY_KEY,BUY_PLAN_HISTORY_KEY,SUPPLY_LOCK_PENDING_KEY,SUPPLY_LOCK_HISTORY_KEY,STRATEGY_QUEUE_HISTORY_KEY,CONSOLIDATION_KEY] as const
 const MAX_SOURCE_CHARACTERS = 262_144
 const VENUES: Record<string, string> = { pump: 'Pump.fun', bonk: 'Bonk', 'raydium-launchlab': 'Raydium LaunchLab', 'meteora-dbc': 'Meteora DBC', 'raydium-cpmm': 'Raydium CPMM', solana: 'Solana' }
 type ReadStorage = { getItem: (key: string) => string | null }
@@ -77,7 +88,7 @@ function walletActivity(value:unknown,pending:boolean):WorkspaceActivityItem{
  const item=record(value),intent=publicWalletOperationIntent(item as unknown as WalletOperationIntent)
  if(!pending&&item.status!=='confirmed'&&item.status!=='failed')throw new Error('Invalid wallet status')
  const tx=signature(item.signature),status=pending?'pending':item.status as 'confirmed'|'failed'
- const action=intent.kind==='sol'?'SOL distribution':intent.kind==='token'?'Token distribution':'Empty-account cleanup'
+ const action=intent.kind==='sol'?'SOL distribution':intent.kind==='token'?'Token distribution':intent.kind==='burn'?'Token supply burn':'Empty-account cleanup'
  return {id:`wallet:${status}:${tx}`,kind:'wallet',status,mint:intent.mint||intent.payer,venue:'solana',timestamp:timestamp(pending?item.submittedAt:item.resolvedAt),signatures:[tx],description:`${action} ${pending?'awaiting confirmation':status}.`}
 }
 function bundleActivity(receipt: BundleResult): WorkspaceActivityItem | null {
@@ -149,7 +160,8 @@ export function readWorkspaceActivity(storage?: ReadStorage): WorkspaceActivityS
     if (savedItem && !(pendingItem && savedItem.mint === pendingItem.mint && savedItem.signatures.some(tx => pendingItem.signatures.includes(tx)))) items.push(savedItem)
     if (pendingItem) items.push(pendingItem)
   } catch { warnings.push('Bundle activity could not be read. Preserve this browser’s data and review Bundler before trying another operation.') }
-  const unique = [...new Map(items.map(item => [item.id, item])).values()]
+  const operations=readOperationActivity(target);items.push(...operations.items);warnings.push(...operations.warnings)
+  const unique = mergeActivityEvidence([...new Map(items.map(item => [item.id, item])).values()])
   unique.sort((a, b) => a.timestamp === null ? b.timestamp === null ? a.id.localeCompare(b.id) : 1 : b.timestamp === null ? -1 : Date.parse(b.timestamp) - Date.parse(a.timestamp) || a.id.localeCompare(b.id))
   return { items: unique, warnings }
 }
@@ -157,9 +169,9 @@ export function filterWorkspaceActivity(items: WorkspaceActivityItem[], filter: 
   const search = query.trim().toLowerCase().slice(0, 200)
   return items.filter(item => {
     if (filter === 'pending' && item.status !== 'pending') return false
-    if (filter === 'trades' && item.kind !== 'trade') return false
+    if (filter === 'trades' && !['trade','sale','session','buy-plan','queue'].includes(item.kind)) return false
     if (filter === 'launches' && !['launch','setup'].includes(item.kind)) return false
-    if (filter === 'wallets' && item.kind !== 'wallet' && item.kind !== 'group') return false
+    if (filter === 'wallets' && !['wallet','group','relay','creator','lock','consolidation'].includes(item.kind)) return false
     if (filter === 'bundles' && item.kind !== 'bundle') return false
     return !search || [item.description, item.mint, VENUES[item.venue], item.status, item.kind, ...item.signatures].join(' ').toLowerCase().includes(search)
   })

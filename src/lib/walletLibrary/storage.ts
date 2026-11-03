@@ -1,6 +1,6 @@
 import {PublicKey} from '@solana/web3.js'
 import type {WalletVault} from '../walletVault'
-import {MAX_GROUP_WALLETS,MAX_LIBRARY_WALLETS,WALLET_LIBRARY_KEY,type WalletLibraryRecord,type WalletLibraryStorage,type StoredLibraryWallet,type WalletLibraryGroup,type WalletSummary} from './types'
+import {MAX_GROUP_WALLETS,MAX_LIBRARY_WALLETS,WALLET_LIBRARY_KEY,WALLET_GROUP_COLORS,type WalletLibraryRecord,type WalletLibraryStorage,type StoredLibraryWallet,type WalletLibraryGroup,type WalletSummary} from './types'
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
 export function libraryId(value:unknown):string{if(typeof value!=='string'||!UUID.test(value))throw new Error('Invalid wallet library identifier.');return value}
 export function libraryName(value:unknown):string{if(typeof value!=='string'||!value.trim()||value.trim().length>60||/[\u0000-\u001f\u007f]/.test(value))throw new Error('Use a name between one and 60 characters.');return value.trim()}
@@ -31,7 +31,8 @@ export function safeWalletLibrary(value:unknown):WalletLibraryRecord{
   if(!value||!Array.isArray(value.walletIds)||value.walletIds.length>MAX_GROUP_WALLETS)throw new Error('Groups support up to 20 managed wallets.')
   const ids=value.walletIds.map(libraryId)
   if(new Set(ids).size!==ids.length||ids.some(id=>!walletIds.has(id)))throw new Error('A group contains missing or duplicate wallets.')
-  return {id:libraryId(value.id),name:libraryName(value.name),walletIds:ids,createdAt:date(value.createdAt),updatedAt:date(value.updatedAt)}
+  if(value.color!==undefined&&!WALLET_GROUP_COLORS.includes(value.color))throw new Error('Choose a supported group color.')
+  return {id:libraryId(value.id),name:libraryName(value.name),walletIds:ids,createdAt:date(value.createdAt),updatedAt:date(value.updatedAt),...(value.color?{color:value.color}:{}),...(value.archivedAt?{archivedAt:date(value.archivedAt)}:{})}
  })
  if(new Set(groups.map(value=>value.id)).size!==groups.length)throw new Error('Duplicate wallet groups.')
  return {version:1,revision:item.revision,wallets,groups,legacyImported:item.legacyImported}

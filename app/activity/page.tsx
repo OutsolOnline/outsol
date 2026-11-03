@@ -10,12 +10,12 @@ import { filterWorkspaceActivity, readWorkspaceActivity, WORKSPACE_ACTIVITY_KEYS
 const filters: { value: ActivityFilter; label: string }[] = [{ value: 'all', label: 'All' }, { value: 'launches', label: 'Launches' }, { value: 'trades', label: 'Trades' }, { value: 'wallets', label: 'Wallets' }, { value: 'bundles', label: 'Bundles' }, { value: 'pending', label: 'Pending' }]
 const venues: Record<string, string> = { pump: 'Pump.fun', bonk: 'Bonk', 'raydium-launchlab': 'Raydium LaunchLab', 'meteora-dbc': 'Meteora DBC', 'raydium-cpmm': 'Raydium CPMM', solana: 'Solana' }
 const short = (value: string) => `${value.slice(0, 6)}…${value.slice(-6)}`
-const title = (item: WorkspaceActivityItem) => item.kind === 'group' ? item.description.startsWith('Group funding') ? 'Group funding' : 'Group withdrawal' : item.kind === 'bundle' ? 'Wallet bundle' : item.kind === 'wallet' ? 'Wallet operation' : item.kind === 'setup' ? 'Launch setup' : item.kind === 'launch' ? 'Token launch' : item.description.startsWith('Buy') ? 'Buy tokens' : 'Sell tokens'
+const title = (item: WorkspaceActivityItem) => item.kind==='lock'?'Token escrow':item.kind==='queue'?'Strategy queue':item.kind==='consolidation'?'Consolidate & sell':item.kind==='creator'?'Creator operation':item.kind==='buy-plan'?'Saved wallet purchase':item.kind==='relay'?'Token forwarding':item.kind==='sale'?'Receiver sale':item.kind==='session'?'Trading session':item.kind === 'group' ? item.description.startsWith('Group funding') ? 'Group funding' : 'Group withdrawal' : item.kind === 'bundle' ? 'Wallet bundle' : item.kind === 'wallet' ? 'Wallet operation' : item.kind === 'setup' ? 'Launch setup' : item.kind === 'launch' ? 'Token launch' : item.description.startsWith('Buy') ? 'Buy tokens' : 'Sell tokens'
 
 function ActivityRow({ item }: { item: WorkspaceActivityItem }) {
   const Icon = item.kind === 'setup' ? Wrench : item.kind === 'launch' ? Rocket : Activity
   const isWallet = item.kind === 'wallet' || item.kind === 'group'
-  const recoveryHref = item.kind === 'group' ? '/wallet' : item.kind === 'bundle' ? '/bundler' : item.kind === 'wallet' ? '/wallet-operations?view=manual' : item.kind === 'trade' ? `/manage?mint=${encodeURIComponent(item.mint)}` : '/launch'
+  const recoveryHref = item.recoveryHref??(item.kind === 'group' ? '/wallet' : item.kind === 'bundle' ? '/bundler' : item.kind === 'wallet' ? '/wallet-operations?view=manual' : item.kind === 'trade' ? `/manage?mint=${encodeURIComponent(item.mint)}` : '/launch')
   const workspaceHref = item.kind === 'group' ? '/wallet' : item.kind === 'bundle' ? '/bundler' : item.kind === 'wallet' ? '/wallet-operations?view=manual' : `/token/${encodeURIComponent(item.mint)}`
   return <article className="border-b border-white/[.07] py-5 last:border-0">
     <div className="flex flex-wrap items-start gap-3">

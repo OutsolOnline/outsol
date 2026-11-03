@@ -27,19 +27,22 @@ import { assertNoPendingWalletOperation } from '@/lib/walletOperations/history'
 import { assertNoPendingGroupOperation } from '@/lib/walletGroups/history'
 import { TokenPreview } from './TokenPreview'
 import {prepareLaunchNavigation,setActiveDesignForNavigation} from '@/lib/launchNavigation'
+import {assertKitBindings} from '@/lib/launchKits'
+import {KitRoleRequirements} from './LaunchKitsPanel'
 import styles from './LaunchBuilder.module.css'
 import {useBundleWalletControlPersistence} from '@/components/bundler/BundleWalletControls'
 
 export function LaunchContent() {
   const walletStorageError=useBundleWalletControlPersistence('launch')
   const router=useRouter()
-  const { connected } = useWallet()
+  const { connected, publicKey } = useWallet()
   const store = useLaunchStore(), platform = usePlatformWalletStore()
   const { hydrateWallet } = platform
   const { currentStep, setStep } = store
   const query = useSearchParams().toString()
   const [draftName, setDraftName] = useState(''), [message, setMessage] = useState(''), [error, setError] = useState('')
   const draftId = useRef<string | undefined>(undefined)
+  const [activeDraftId,setActiveDraftId]=useState<string|undefined>(undefined)
   const [saving, setSaving] = useState(false)
   const [restored,setRestored]=useState(false),[savedAt,setSavedAt]=useState(''),[autosaveError,setAutosaveError]=useState('')
   const assetRef=useRef<{blob:Blob;id:string}|null>(null)
@@ -47,7 +50,7 @@ export function LaunchContent() {
   const session=useRef(0)
   const platformReady = !!platform.getPublicKey()
   const chosenReady = store.usePlatformWallet ? platformReady : connected
-  useEffect(() => { if (!store.metadata) { draftId.current = undefined;setActiveDesignForNavigation(undefined);assetRef.current=null;missingArtworkRef.current=undefined;setSavedAt('');setAutosaveError('');setDraftName('') } }, [store.metadata])
+  useEffect(() => { if (!store.metadata) { draftId.current = undefined;setActiveDraftId(undefined);setActiveDesignForNavigation(undefined);assetRef.current=null;missingArtworkRef.current=undefined;setSavedAt('');setAutosaveError('');setDraftName('') } }, [store.metadata])
   useEffect(() => { hydrateWallet() }, [hydrateWallet])
   useEffect(()=>{
     let active=true
@@ -72,7 +75,7 @@ export function LaunchContent() {
         if(!active||(!params.has('draft')&&useLaunchStore.getState().metadata)||readPending())return
         assertNoPendingWalletOperation();assertNoPendingGroupOperation();if(readTradePending())return
         missingArtworkRef.current=missingId;assetRef.current=image&&value.artworkId?{blob:image,id:value.artworkId}:null
-        current.reset();draftId.current=draft.id;setActiveDesignForNavigation(draft.id);setDraftName(draft.name);setSavedAt(draft.updatedAt)
+        current.reset();draftId.current=draft.id;setActiveDraftId(draft.id);setActiveDesignForNavigation(draft.id);setDraftName(draft.name);setSavedAt(draft.updatedAt)
         current.setMetadata(value.metadata);current.setConfig(normalizePumpDesign(value.config));current.setBundleSettings(value.bundleSettings);current.setMetadataUri(value.metadataUri);current.setImageFile(image);current.setImagePreview(preview);current.setStep('metadata');current.setError(warning||null)
         setMessage('Your design was restored. Select a fresh mint and signing wallet when you continue; private keys are never saved with a design.')
       }catch(e){if(active)setError(e instanceof Error?e.message:'The saved design could not be restored.')}
@@ -83,7 +86,7 @@ export function LaunchContent() {
   useEffect(()=>{
     if(!restored||!store.metadata||store.currentStep==='result'||store.isLoading)return
     const snapshot={metadata:{...store.metadata},metadataUri:store.metadataUri||'',config:{...store.config},bundleSettings:structuredClone(store.bundleSettings),image:store.imageFile,name:draftName||store.metadata.name||'Untitled design'}
-    const id=draftId.current||crypto.randomUUID();draftId.current=id
+    const id=draftId.current||crypto.randomUUID();draftId.current=id;setActiveDraftId(id)
     let active=true
     const timer=setTimeout(()=>{void(async()=>{
       try{
@@ -103,7 +106,7 @@ export function LaunchContent() {
       const current = useLaunchStore.getState()
       const params=new URLSearchParams(query)
       const needsFresh=shouldStartNewLaunch(current.currentStep,params)||(params.get('new')==='1'&&(!!current.metadata||!!current.imageFile||current.currentStep!=='metadata'))
-      if(needsFresh){if(!prepareLaunchNavigation(`/launch?${query}`)){setError(useLaunchStore.getState().error||'The current operation must finish before starting another design.');return}draftId.current=undefined;setDraftName('');setMessage('');setError('')}
+      if(needsFresh){if(!prepareLaunchNavigation(`/launch?${query}`)){setError(useLaunchStore.getState().error||'The current operation must finish before starting another design.');return}draftId.current=undefined;setActiveDraftId(undefined);setDraftName('');setMessage('');setError('')}
       current.setConfig(launchSelectionFromSearch(new URLSearchParams(query), Math.floor(Date.now() / 1000)))
       if (current.currentStep !== 'result') {
         const config = useLaunchStore.getState().config
@@ -118,23 +121,25 @@ export function LaunchContent() {
     try {
       const snapshot = useLaunchStore.getState()
       const revision=session.current,id=draftId.current||crypto.randomUUID(),missingId=missingArtworkRef.current
-      draftId.current=id
+      draftId.current=id;setActiveDraftId(id)
       const input = { name: draftName || snapshot.metadata?.name || 'Untitled design', metadata: snapshot.metadata ? { ...snapshot.metadata } : { name: '', symbol: '', description: '' }, metadataUri: snapshot.metadataUri || '', config: { ...snapshot.config },bundleSettings:structuredClone(snapshot.bundleSettings) }
       const artwork = snapshot.imageFile ? await saveArtwork(snapshot.imageFile, input.name) : null
       if(session.current!==revision||draftId.current!==id)return
       const draft = createLaunchDraft({ ...input, ...(artwork ? { artworkId: artwork.id } : missingId ? {artworkId:missingId} : {}) }, id)
-      saveLaunchDraft(draft); draftId.current = draft.id;setActiveDesignForNavigation(draft.id); setMessage(artwork ? 'Design and artwork saved on this device. Wallet and mint keys are excluded.' : 'Public design saved on this device. Wallet and mint keys are excluded.')
+      saveLaunchDraft(draft); draftId.current = draft.id;setActiveDraftId(draft.id);setActiveDesignForNavigation(draft.id); setMessage(artwork ? 'Design and artwork saved on this device. Wallet and mint keys are excluded.' : 'Public design saved on this device. Wallet and mint keys are excluded.')
       localStorage.setItem('vanity-active-design-v1',draft.id);setSavedAt(draft.updatedAt);const resume=savedLaunchUrl(query);if(resume)router.replace(resume,{scroll:false})
     } catch (e) { setError(e instanceof Error ? e.message : 'Draft could not be saved.') }
     finally { setSaving(false) }
   }
+  const assertKitReady=()=>{const current=useLaunchStore.getState();assertKitBindings(draftId.current,current.bundleSettings,current.config.creatorFeeSelection,current.usePlatformWallet?usePlatformWalletStore.getState().getPublicKey():publicKey?.toBase58())}
   const designing = ['metadata','select-mint','launch-settings'].includes(store.currentStep)
   return <div className="min-h-screen flex flex-col"><Header /><main id="workspace-content" tabIndex={-1} className="workspace-main flex-1">
     <div className="page-heading"><div className="flex flex-wrap items-center justify-between gap-5"><div><h1>New launch</h1><p>Design, prepare and review your Pump.fun token.</p></div><div className="flex flex-wrap gap-3"><Link href="/rehearse" className="secondary-action"><FlaskConical size={16}/>Rehearse</Link><Link href="/library" className="secondary-action"><FolderOpen size={16} />Library</Link></div></div></div>
     <LaunchRecovery />
+    <KitRoleRequirements draftId={activeDraftId}/>
     <div className={styles.builder}><div className={styles.builderTop}><span className={styles.builderTag}>Pump.fun token</span><span role="status">{autosaveError?'Autosave paused':savedAt?`Saved ${new Date(savedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:'Saved on this device as you work'}</span></div>
     <div className={styles.builderBody}><StepIndicator currentStep={store.currentStep} /><div className={store.currentStep==='sign-send'||store.currentStep==='result'?styles.stepBody:`${styles.stepBody} ${styles.metadataGrid}`}><div key={`${store.currentStep}:${store.config.mode}:${store.config.venue}`}>
-      {!restored ? <div className={styles.editorSkeleton} role="status" aria-label="Restoring your saved design"><span/><span/><span/></div> : store.currentStep === 'metadata' ? <MetadataStep /> : store.currentStep === 'select-mint' ? <SelectMintStep /> : store.currentStep === 'launch-settings' ? <LaunchSettingsStep /> : store.currentStep === 'connect-wallet' ? <ConnectWalletStep /> : store.currentStep === 'sign-send' ? <SignSendStep /> : <ResultStep />}
+      {!restored ? <div className={styles.editorSkeleton} role="status" aria-label="Restoring your saved design"><span/><span/><span/></div> : store.currentStep === 'metadata' ? <MetadataStep /> : store.currentStep === 'select-mint' ? <SelectMintStep /> : store.currentStep === 'launch-settings' ? <LaunchSettingsStep /> : store.currentStep === 'connect-wallet' ? <ConnectWalletStep /> : store.currentStep === 'sign-send' ? <SignSendStep assertCanLaunch={assertKitReady} /> : <ResultStep />}
     </div>{store.currentStep!=='sign-send'&&store.currentStep!=='result'&&<TokenPreview/>}</div></div>
     {designing && <div className={styles.draftBar}><div><Save size={16} /><label htmlFor="draft-name">Save your progress</label></div><input id="draft-name" maxLength={80} placeholder="Design name" value={draftName} disabled={saving} onChange={e => setDraftName(e.target.value)} /><button className="secondary-action" disabled={saving} onClick={save}>{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}{saving ? 'Saving…' : 'Save design'}</button></div>}
     </div>{(error || (designing && store.error)) && <p role="alert" className="notice notice-error mt-5">{error || store.error}</p>}{message && <p role="status" className="notice mt-5">{message} <Link href="/drafts" className="underline inline-flex gap-1 items-center">View designs<ArrowUpRight size={13} /></Link></p>}

@@ -1,5 +1,5 @@
 import { ComputeBudgetProgram, Connection, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction, type AccountInfo, type TransactionInstruction } from '@solana/web3.js'
-import { ASSOCIATED_TOKEN_PROGRAM_ID, ExtensionType, NATIVE_MINT, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync, getExtensionTypes, unpackAccount, unpackMint } from '@solana/spl-token'
+import { ASSOCIATED_TOKEN_PROGRAM_ID, ExtensionType, NATIVE_MINT, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createBurnCheckedInstruction, createCloseAccountInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync, getExtensionTypes, unpackAccount, unpackMint } from '@solana/spl-token'
 import { fetchBounded, withTimeout } from '@/lib/transactions/http'
 import { normalizeOperationInput, parseExactUnits, publicAddress, type WalletOperationInput, type WalletOperationIntent } from './model'
 import { publicWalletOperationIntent } from './history'
@@ -11,6 +11,7 @@ const ALLOWED_ACCOUNT_EXTENSIONS = new Set([ExtensionType.ImmutableOwner])
 export interface WalletOperationPreview {
   payerBeforeLamports: string; payerAfterLamports: string; networkFeeLamports: string; rentChangeLamports: string
   sourceBeforeRaw?: string; sourceAfterRaw?: string
+  supplyBeforeRaw?:string;supplyAfterRaw?:string
   recipients: { address: string; rawAmount: string; beforeRaw: string; afterRaw: string }[]
 }
 export interface PreparedWalletOperation { intent: WalletOperationIntent; transaction: VersionedTransaction; message: string; preview: WalletOperationPreview; createdAt: number; lastValidBlockHeight: number }
@@ -56,6 +57,7 @@ export function buildWalletOperationTransaction(input: WalletOperationIntent, bl
     }
   }
   if (intent.kind === 'close') for (const account of intent.closeAccounts!) instructions.push(createCloseAccountInstruction(new PublicKey(account.address), payer, payer, [], tokenProgram(account.tokenProgram)))
+  if(intent.kind==='burn')instructions.push(createBurnCheckedInstruction(new PublicKey(intent.sourceAccount!),new PublicKey(intent.mint!),payer,BigInt(intent.burnRaw!),intent.decimals!,[],tokenProgram(intent.tokenProgram!)))
   const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: payer, recentBlockhash: publicAddress(blockhash), instructions }).compileToV0Message())
   if (transaction.serialize().length > 1232) throw new Error('This operation exceeds the transaction size limit. Use fewer recipients or accounts.')
   return transaction
@@ -79,7 +81,7 @@ function simulationAccount(value: unknown): AccountInfo<Buffer> | null {
 export async function simulateWalletOperation(connection: Connection, transaction: VersionedTransaction, input: WalletOperationIntent, signed = false): Promise<WalletOperationPreview> {
   const intent = publicWalletOperationIntent(input)
   inspectWalletOperationIntent(transaction, intent)
-  const addresses = [...new Set([intent.payer, ...(intent.kind === 'sol' ? intent.recipients!.map(value => value.address) : intent.kind === 'token' ? [intent.mint!, intent.sourceAccount!, ...intent.recipients!.flatMap(value => [value.address, value.tokenAccount!])] : intent.closeAccounts!.flatMap(value => [value.address, value.mint]))])]
+  const addresses = [...new Set([intent.payer, ...(intent.kind === 'sol' ? intent.recipients!.map(value => value.address) : intent.kind==='burn'?[intent.mint!,intent.sourceAccount!]:intent.kind === 'token' ? [intent.mint!, intent.sourceAccount!, ...intent.recipients!.flatMap(value => [value.address, value.tokenAccount!])] : intent.closeAccounts!.flatMap(value => [value.address, value.mint]))])]
   if (addresses.length > 20) throw new Error('Too many accounts to preview safely.')
   // Hydrate all public instruction accounts before the local-fork simulator takes its bank snapshot.
   await withTimeout(connection.getMultipleAccountsInfo(transaction.message.staticAccountKeys, 'confirmed'))
@@ -96,6 +98,7 @@ export async function simulateWalletOperation(connection: Connection, transactio
   const beforePayer = safeLamports(before[0].lamports), afterPayer = safeLamports(after[0].lamports), networkFee = safeLamports(fee.value)
   const recipients: WalletOperationPreview['recipients'] = []
   let expectedChange = -networkFee, rentChange = 0n, sourceBeforeRaw: string | undefined, sourceAfterRaw: string | undefined
+  let supplyBeforeRaw:string|undefined,supplyAfterRaw:string|undefined
   if (intent.kind === 'sol') for (const recipient of intent.recipients!) {
     const initial = at(before, recipient.address), final = at(after, recipient.address)
     requireSystemWallet(initial); requireSystemWallet(final)
@@ -124,6 +127,14 @@ export async function simulateWalletOperation(connection: Connection, transactio
       recipients.push({ address: recipient.address, rawAmount: recipient.rawAmount, beforeRaw: beforeRaw.toString(), afterRaw: afterRaw.toString() })
     }
   }
+  if(intent.kind==='burn'){
+    const mint=new PublicKey(intent.mint!),source=new PublicKey(intent.sourceAccount!),owner=new PublicKey(intent.payer),program=tokenProgram(intent.tokenProgram!),initialMint=at(before,intent.mint!),finalMint=at(after,intent.mint!),initialAccount=at(before,intent.sourceAccount!),finalAccount=at(after,intent.sourceAccount!)
+    const initial=checkedMint(mint,initialMint),final=checkedMint(mint,finalMint),initialSource=checkedTokenAccount(source,initialAccount,program,mint,owner),finalSource=checkedTokenAccount(source,finalAccount,program,mint,owner),burn=BigInt(intent.burnRaw!)
+    if(!initial.program.equals(program)||!final.program.equals(program)||initial.state.decimals!==intent.decimals||final.state.decimals!==intent.decimals||initial.state.supply-final.state.supply!==burn||initialSource.amount-finalSource.amount!==burn)throw new Error('The simulated burn does not match the reviewed source balance and mint supply decrease.')
+    const unchanged=(left:Buffer,right:Buffer,offset:number)=>{const a=Buffer.from(left),b=Buffer.from(right);a.fill(0,offset,offset+8);b.fill(0,offset,offset+8);return a.equals(b)}
+    if(initialMint!.lamports!==finalMint!.lamports||initialAccount!.lamports!==finalAccount!.lamports||!unchanged(initialMint!.data,finalMint!.data,36)||!unchanged(initialAccount!.data,finalAccount!.data,64))throw new Error('A burn changed an unapproved authority, account state or rent balance.')
+    sourceBeforeRaw=initialSource.amount.toString();sourceAfterRaw=finalSource.amount.toString();supplyBeforeRaw=initial.state.supply.toString();supplyAfterRaw=final.state.supply.toString()
+  }
   if (intent.kind === 'close') for (const account of intent.closeAccounts!) {
     const address = new PublicKey(account.address), mint = new PublicKey(account.mint), program = tokenProgram(account.tokenProgram), initial = at(before, account.address)
     const mintState = checkedMint(mint, at(before, account.mint))
@@ -134,7 +145,7 @@ export async function simulateWalletOperation(connection: Connection, transactio
     rentChange += returnedRent; expectedChange += returnedRent
   }
   if (afterPayer - beforePayer !== expectedChange) throw new Error('The simulated wallet balance does not match transfers, rent and the network fee.')
-  return { payerBeforeLamports: beforePayer.toString(), payerAfterLamports: afterPayer.toString(), networkFeeLamports: networkFee.toString(), rentChangeLamports: rentChange.toString(), ...(sourceBeforeRaw === undefined ? {} : { sourceBeforeRaw, sourceAfterRaw }), recipients }
+  return { payerBeforeLamports: beforePayer.toString(), payerAfterLamports: afterPayer.toString(), networkFeeLamports: networkFee.toString(), rentChangeLamports: rentChange.toString(), ...(sourceBeforeRaw === undefined ? {} : { sourceBeforeRaw, sourceAfterRaw }),...(supplyBeforeRaw===undefined?{}:{supplyBeforeRaw,supplyAfterRaw}), recipients }
 }
 
 /** Read-only preparation. No keys are accepted and no transaction is submitted. */
@@ -158,6 +169,13 @@ export async function prepareWalletOperation(connection: Connection, input: Wall
     const recipients = normalized.recipients.map(recipient => ({ address: recipient.address, rawAmount: parseExactUnits(recipient.amount, state.decimals).toString(), tokenAccount: getAssociatedTokenAddressSync(mint, new PublicKey(recipient.address), false, program).toBase58() }))
     if (recipients.reduce((total, recipient) => total + BigInt(recipient.rawAmount), 0n) > account.amount) throw new Error('The selected token account has insufficient tokens.')
     intent = { ...intent, recipients, mint: mint.toBase58(), sourceAccount: source.toBase58(), tokenProgram: program.toBase58(), decimals: state.decimals }
+  }
+  if(normalized.kind==='burn'){
+    const mint=new PublicKey(normalized.mint),{state,program}=checkedMint(mint,await withTimeout(connection.getAccountInfo(mint,'confirmed')))
+    if(mint.equals(NATIVE_MINT))throw new Error('Wrapped SOL cannot be burned here. Use the supported SOL withdrawal controls.')
+    const source=normalized.sourceAccount?new PublicKey(normalized.sourceAccount):getAssociatedTokenAddressSync(mint,payer,false,program),account=checkedTokenAccount(source,await withTimeout(connection.getAccountInfo(source,'confirmed')),program,mint,payer),amount=parseExactUnits(normalized.amount,state.decimals)
+    if(amount>account.amount||amount>state.supply)throw new Error('The burn exceeds the selected token balance or mint supply.')
+    intent={...intent,mint:mint.toBase58(),sourceAccount:source.toBase58(),tokenProgram:program.toBase58(),decimals:state.decimals,burnRaw:amount.toString()}
   }
   if (normalized.kind === 'close') {
     const accounts = await withTimeout(connection.getMultipleAccountsInfo(normalized.accounts.map(value => new PublicKey(value)), 'confirmed'))

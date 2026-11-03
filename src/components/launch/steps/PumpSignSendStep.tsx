@@ -26,12 +26,13 @@ import { assertGitHubIdentityUnchanged, fetchGitHubIndividual } from '@/lib/gith
 import { verifyCreatorFeeRoutingOnChain } from '@/lib/creatorFeeRecovery'
 import { validatePumpLaunchPlan, type NativePumpLaunchPlan } from '@/lib/transactions/validatePumpLaunchPlan'
 import styles from '../LaunchBuilder.module.css'
+import {assertStagedLaunchPlan} from '@/lib/buyPlans/launchHandoff'
 
 type Prepared = { transactions: VersionedTransaction[]; messages: string[]; launchPlan: NativePumpLaunchPlan; reviewKey: string; payer: string; blockhash: string; metadataUri: string; debit: string; networkFee:string; tip: string; bundle: boolean; createdAt: number }
 const sol = (value: string | number) => (Number(value) / 1e9).toLocaleString(undefined, { maximumFractionDigits: 9 })
 type Status = 'idle' | 'preparing' | 'ready' | 'signing' | 'sending' | 'error' | 'unknown'
 
-export function PumpSignSendStep() {
+export function PumpSignSendStep({assertCanLaunch}:{assertCanLaunch?:()=>void}={}) {
   const { connection } = useConnection(), wallet = useWallet(), platform = usePlatformWalletStore(), store = useLaunchStore()
   const { metadata, metadataUri, imageFile, bannerFile, config, usePlatformWallet } = store
   const mint = store.getMintKeypair()
@@ -48,15 +49,18 @@ export function PumpSignSendStep() {
   const signerNow = () => useLaunchStore.getState().usePlatformWallet ? usePlatformWalletStore.getState().getPublicKey() : currentWallet.current.wallet?.adapter.publicKey?.toBase58()
   const readReviewKey = () => {
     const state = useLaunchStore.getState()
-    return JSON.stringify({ config: state.config, metadata: state.metadata, metadataUri: state.metadataUri, mint: state.getMintKeypair()?.publicKey.toBase58(), payer: signerNow(), usePlatformWallet: state.usePlatformWallet })
+    return JSON.stringify({ config: state.config, bundleSettings:state.bundleSettings, metadata: state.metadata, metadataUri: state.metadataUri, mint: state.getMintKeypair()?.publicKey.toBase58(), payer: signerNow(), usePlatformWallet: state.usePlatformWallet })
   }
-  const reviewKey = JSON.stringify({ config, metadata, metadataUri, mint: mint?.publicKey.toBase58(), payer, usePlatformWallet })
+  const reviewKey = JSON.stringify({ config, bundleSettings:store.bundleSettings, metadata, metadataUri, mint: mint?.publicKey.toBase58(), payer, usePlatformWallet })
   useEffect(() => { setPrepared(null); setApproved(false); setError(''); setStatus(value => ['signing', 'sending', 'unknown'].includes(value) ? value : 'idle') }, [reviewKey])
   useEffect(() => {
     if (config.creatorFeeSelection.kind !== 'github' || githubIdentity.current?.username.toLowerCase() !== config.creatorFeeSelection.username.toLowerCase()) { githubIdentity.current = null; setReviewedGitHub(null) }
   }, [config.creatorFeeSelection])
-  const assertReview = (expected: string) => { if (controller.current.signal.aborted || readReviewKey() !== expected) throw new Error('The launch details, fee recipient or signing wallet changed. Prepare a fresh preview.') }
+  const assertReview = (expected: string) => { assertCanLaunch?.(); if (controller.current.signal.aborted || readReviewKey() !== expected) throw new Error('The launch details, fee recipient or signing wallet changed. Prepare a fresh preview.') }
   const available = () => {
+    assertCanLaunch?.()
+    const state=useLaunchStore.getState(),staged=assertStagedLaunchPlan(state.bundleSettings,state.config)
+    if(staged?.mint&&staged.mint!==state.getMintKeypair()?.publicKey.toBase58())throw new Error('The staged plan is already attached to another token. Return to launch settings to save a fresh plan.')
     if (readPending()) throw new Error('A previous launch needs a confirmation check. Open Activity before starting another.')
     if (readTradePending()) throw new Error('A previous trade needs a confirmation check in Manage token.')
     assertNoPendingWalletOperation()
@@ -166,6 +170,7 @@ export function PumpSignSendStep() {
   }
   const label = status === 'preparing' ? 'Preparing your launch' : status === 'signing' ? 'Waiting for your signature' : status === 'sending' ? 'Confirming on Solana' : status === 'ready' ? 'Ready for your review' : status === 'unknown' ? 'Confirmation needs a check' : 'Review your commitment'
   return <div className={styles.reviewGrid}><div className="space-y-5"><section className="form-section"><div className={styles.sectionHeading}><span className={styles.sectionIcon}><ShieldCheck size={18} /></span><div><h2>Launch settings</h2><p>Native Pump.fun creation on Solana mainnet.</p></div></div><fieldset disabled={blocked} className="space-y-5"><div><label className="field-label" htmlFor="dev-buy">Optional first buy <span className="text-muted">· SOL</span></label><Input id="dev-buy" type="number" min="0" max="1000" step="0.01" value={Number.isNaN(config.devBuySol) ? '' : config.devBuySol} onChange={e => update({ devBuySol: e.target.valueAsNumber })} /><p className="field-help">Maximum trade spend. Set 0 to create without buying.</p></div><BuyPresets value={config.devBuySol} onChange={amount => update({ devBuySol: amount })} disabled={blocked} /></fieldset><div className="mt-6 border-t border-border pt-6"><CreatorFeeFields value={config.creatorFeeSelection} onChange={value => update({ creatorFeeSelection: value })} disabled={blocked} idPrefix="single-launch-creator" /></div>{reviewedGitHub && config.creatorFeeSelection.kind === 'github' && <div className="notice mt-5"><p>Verified GitHub individual: <a className="underline" href={reviewedGitHub.profileUrl} target="_blank" rel="noreferrer">@{reviewedGitHub.username} ↗</a></p><p className="font-mono text-xs mt-2">Immutable numeric user ID: {reviewedGitHub.userId}</p><p className="field-help">Creator fees accrue to this identity’s social escrow. Claim on Pump’s website or mobile app using the linked GitHub account.</p></div>}</section>
+    {store.bundleSettings.deferBuys&&<section className="form-section"><h2 className="text-lg">Deploy now · buy later</h2><p className="notice mt-4">0 additional buyer wallets execute in this launch. {store.bundleSettings.wallets.filter(row=>row.buySol>0).length} staged wallets hold {store.bundleSettings.wallets.reduce((sum,row)=>sum+(row.buySol>0?row.buySol:0),0).toLocaleString(undefined,{maximumFractionDigits:9})} SOL in later buy budgets.</p><p className="field-help mt-3">Only the creator first buy shown here can execute with creation. After confirmation, open the saved staged plan and review its current quotes, receiver destinations and complete spending ceilings before explicitly starting buys.</p></section>}
     <details className="form-section"><summary className="flex items-center gap-2 cursor-pointer text-sm"><SlidersHorizontal size={15} />Advanced execution settings<span className="ml-auto text-xs text-muted">{config.slippage}% slippage · {config.priorityFeeSol} SOL priority</span></summary><fieldset disabled={blocked} className="grid sm:grid-cols-2 gap-5 mt-6"><div><label className="field-label" htmlFor="slippage">Slippage · %</label><Input id="slippage" type="number" min="0.1" max="50" step="0.1" value={Number.isNaN(config.slippage) ? '' : config.slippage} onChange={e => update({ slippage: e.target.valueAsNumber })} /></div><div><label className="field-label" htmlFor="priority-fee">Priority fee budget · SOL</label><Input id="priority-fee" type="number" min="0" max="0.01" step="0.00001" value={Number.isNaN(config.priorityFeeSol) ? '' : config.priorityFeeSol} onChange={e => update({ priorityFeeSol: e.target.valueAsNumber })} /></div><div className="sm:col-span-2"><label className="field-label" htmlFor="jito-tip">Bundle validator tip · SOL</label><Input id="jito-tip" type="number" min="0.000001" max="0.1" step="0.000001" value={Number.isNaN(config.jitoTipSol) ? '' : config.jitoTipSol} onChange={e => update({ jitoTipSol: e.target.valueAsNumber })} /><p className="field-help">Only used when long token details require a multi-transaction launch. Single-transaction launches pay no bundle tip.</p></div></fieldset></details>
     {(error || errors.length > 0) && <div className="notice notice-error" role="alert">{error || errors.join(' ')}{status === 'unknown' && <p className="mt-3"><Link href="/activity" className="underline">Open Activity to check your saved launch</Link></p>}</div>}
     <div className="flex flex-wrap justify-between gap-3"><Button variant="ghost" disabled={blocked} onClick={store.prevStep}>Back to signing wallet</Button><Button disabled={blocked || errors.length > 0} onClick={prepare}>{status === 'preparing' ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}{prepared ? 'Refresh preview' : 'Prepare launch'}</Button></div></div>
