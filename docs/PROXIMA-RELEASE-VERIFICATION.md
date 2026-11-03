@@ -1,6 +1,6 @@
 # OutSol workspace expansion — verification
 
-Verified locally on 3 November 2026, from `outsol-proxima-parity` based on `deb2906`. Deployment is a separate step; this file does not assert that a pending deployment succeeded.
+Verified locally on 3 November 2026, from `outsol-proxima-parity` based on `deb2906`. Application commit [`b0bb7a1`](https://github.com/OutsolOnline/outsol/commit/b0bb7a1d552d8db4d74bc35ded1dc0ea31655abc) was pushed to organization `main` and deployed successfully.
 
 ## Release checks
 
@@ -10,7 +10,7 @@ Verified locally on 3 November 2026, from `outsol-proxima-parity` based on `deb2
 - Whole-repository ESLint: passed with no errors or warnings.
 - Production dependency audit: **0 vulnerabilities** with development-only dependencies omitted.
 - Production Next.js build: passed; all application/API routes compiled and prerendering completed.
-- Whitespace/diff checks: passed before staging; final staged check required before commit.
+- Whitespace/diff checks: passed on the final staged application changes before commit.
 
 ## Actual program execution
 
@@ -41,3 +41,9 @@ Verified saved preferences/default funder after refresh, public watchlist balanc
 This is not full Proxima parity. See [the comparison](./PROXIMA-COMPARISON.md) for all 79 rows and direct sources. Private CEX/aged-wallet/Shield services are absent; layered stealth/cluster concealment is not claimed. New launches remain Pump.fun/Solana/SOL. Staged plans have 16 buyers, observed guards use bounded confirmed samples, and sessions run only while the browser is active within reviewed time/trade/spend caps. No instant-detection or automatic liquidation guarantee exists. RPC racing requires additional configured server-side providers; no new provider subscription was purchased or enabled. Streamflow escrow is not an LP lock. Account collaboration, 2FA and browser-closed signing were not invented on top of local custody.
 
 OutSol platform fees remain **0%**. Network fees, priority fees, account rent, Jito tips and protocol/third-party charges remain separate. Production access protection and private server RPC configuration must remain enabled during deployment. No GitHub Actions are required; Railway repeats release gates inside its Docker builder.
+
+## Verified production deployment
+
+Railway deployment `7c01e39f-b547-4906-a6d0-b735a92e4e5d` reports **SUCCESS**, message `OutSol workspace expansion b0bb7a1`, image digest `sha256:412d1e1c68aac7ce40b6e13e9e8d59bad4653e3a3a219338e8b73f8a7a25495f`. Railway independently repeated the type, lint, 1,241-case regression, dependency audit and production build gates.
+
+At **2026-11-03 12:17:46 UTC**, authenticated read-only checks received 200 and the new expected content for Settings, Watchlist, Funder, Library and the execution-status API on both [outsol.online](https://outsol.online) and [the Railway domain](https://vanity-production-2bbb.up.railway.app). Both reported health 200, preserved the tab title OutSol and redirected a fresh unauthenticated Settings request to `/access` with 307. Access configuration was not disabled or changed. No mainnet transaction was sent. A separate public proof JSON in task outputs contains statuses and release identifiers only; no session, key or RPC credential is included.

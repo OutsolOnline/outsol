@@ -73,7 +73,7 @@ Files: extend existing `src/lib/tradingSessions/*`, corresponding UI and tests a
 - [x] Run focused behavior tests, full suite, typecheck, lint, production dependency audit and build.
 - [x] Use simulated funds for feasible transaction acceptance; inspect browser at 390/768/1440/1920.
 - [x] Update feature inventory with evidence, remaining external dependencies and exact limitations; remove stale competitor fee assertions unless primary sources resolve them.
-- [ ] Commit as OutSol, push public organization source and deploy verified release to Railway; verify actual live build.
+- [x] Commit as OutSol, push public organization source and deploy verified release to Railway; verify actual live build.
 
 ## Execution ledger
 
@@ -90,3 +90,5 @@ Files: extend existing `src/lib/tradingSessions/*`, corresponding UI and tests a
 - Final regression:1,241 passed/99 skipped; whole-tree typecheck and lint passed without warnings; production audit zero vulnerabilities. Separate root-run strict Surfpool acceptance:17passed/5files, including actual exact partial consolidation sale with baseline holdings preserved. Native exact partial sale independently reviewed; no actionable findings. Browser71checks across10routes/eighttoken panels and4widths; 390builder additional manual validation check. Productionbuild inprogress; commit/deploymentpending.
 
 - Production build passed all routes/static generation. Release integration authorized earlier; existing worktree preserved.
+
+- Final release: application b0bb7a1, public organization main pushed, Railway 7c01e39f-b547-4906-a6d0-b735a92e4e5d SUCCESS. Authenticated new-page/API checks passed both domains at12:17:46UTC; fresh sessions redirect to access. No production secrets or gate configuration changed. Local VM stopped.
