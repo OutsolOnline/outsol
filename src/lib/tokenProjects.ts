@@ -43,7 +43,7 @@ export function exportTokenProjects(items:TokenProject[],includeNotes=false):str
 export function importTokenProjects(text:string,storage:Storage=localStorage):TokenProject[]{
  if(typeof text!=='string'||text.length>600000)throw new Error('Use a project JSON file smaller than 600 KB.')
  const value=JSON.parse(text)
- if(value?.version!==1||value.type!=='outsol-projects'||!Array.isArray(value.projects)||value.projects.length>100)throw new Error('Use an OutSol public project export.')
+ if(value?.version!==1||value.type!=='outsol-projects'||!Array.isArray(value.projects)||value.projects.length>100)throw new Error('Use a LaunchPier public project export.')
  const incoming:TokenProject[]=value.projects.map(project)
  if(new Set(incoming.map(item=>item.mint)).size!==incoming.length)throw new Error('Each imported project must have a unique mint.')
  const existing=readTokenProjects(storage),merged=new Map(existing.map(item=>[item.mint,item]))

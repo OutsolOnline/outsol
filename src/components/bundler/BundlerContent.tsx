@@ -12,6 +12,7 @@ import {BundleWalletControls,useBundleWalletControlPersistence} from './BundleWa
 import {BundleWalletSetup} from './BundleWalletSetup'
 import {ManagedBundleWallets} from './ManagedBundleWallets'
 import {SniperPairsWorkspace} from './SniperPairsWorkspace'
+import styles from './BundlerWorkspace.module.css'
 
 export function BundlerContent() {
   const walletStorageError=useBundleWalletControlPersistence('standalone')
@@ -24,12 +25,12 @@ export function BundlerContent() {
     const url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}))
     const link=document.createElement('a');link.href=url;link.download='wallet-outsol-bundle-backup.json';link.click();URL.revokeObjectURL(url)
   }
-  
+
   const validWallets = store.bundleWallets.filter(w => w.isValid && w.buyAmount > 0)
   const sniperCount = validWallets.filter(w => w.mode === 'sniper').length
   const delayedCount = validWallets.filter(w => w.mode === 'delayed').length
   const totalBuyAmount = store.bundleWallets.reduce((sum, w) => sum + (w.buyAmount || 0), 0) + store.devBuyAmount
-  
+
   // Estimate costs
   const createFee = 0
   const jitoTip = store.jitoTip
@@ -37,12 +38,12 @@ export function BundlerContent() {
   const totalEstimate = createFee + jitoTip + totalBuyAmount + networkFees
 
   // Check mint is ready based on mode
-  const mintReady = 
+  const mintReady =
     store.mintMode === 'random' ||
     (store.mintMode === 'import' && store.importedMintPublicKey) ||
     (store.mintMode === 'vanity' && store.foundVanityPublicKey)
 
-  const canExecute = 
+  const canExecute =
     store.tokenName &&
     store.tokenSymbol &&
     store.tokenImage &&
@@ -55,101 +56,87 @@ export function BundlerContent() {
     (!store.managedGroupId||(library.groups.some(group=>group.id===store.managedGroupId)&&[store.managedCreatorWalletId,...store.bundleWallets.filter(wallet=>wallet.buyAmount>0).map(wallet=>wallet.libraryWalletId)].every(id=>!!id&&library.unlockedIds.includes(id)))) &&
     !(store.sniperMode==='block0'&&sniperCount>3)
 
+  const nextStep = walletBusy
+    ? 'Finish the current wallet action before launching.'
+    : !store.creatorPublicKey
+    ? 'Choose a deployer wallet in Wallets.'
+    : !store.tokenName || !store.tokenSymbol || !store.tokenImage
+      ? 'Add your token name, symbol and artwork.'
+      : !mintReady
+        ? 'Finish your mint address settings.'
+        : store.sniperMode==='block0'&&sniperCount>3
+          ? 'Atomic execution supports at most three immediate buyers; transaction size may reduce this further.'
+          : !canExecute && !store.isExecuting && !store.result?.createSignature
+            ? 'Review buyer keys and unlock the selected wallet group before launching.'
+            : 'Review the wallets, budgets and execution plan before launching.'
+
   return (
-    <div className="workspace-card p-5 sm:p-7 max-w-5xl mx-auto">
-      {walletStorageError&&<p role="alert" className="notice notice-error mb-5">{walletStorageError}</p>}
-      <nav className="filter-tabs mb-7" aria-label="Bundle workspace"><button type="button" aria-pressed={view==='launch'} className={view==='launch'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('launch')}>Launch &amp; sniper pairs</button><button type="button" aria-pressed={view==='wallets'} className={view==='wallets'?'text-accent':''} disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Advanced wallet tools</button></nav>
-      <div hidden={view!=='launch'} className="space-y-6">
-        {/* Header */}
-        <div className="space-y-2 border-b border-border pb-5">
-          <h2 className="text-base font-medium text-foreground tracking-tight">Prepare your launch</h2>
-          <p className="text-muted text-sm">
-            Set up reusable sniper pairs, then add your token details and review execution.
-          </p>
-        </div>
-
-        <details className="rounded-lg border border-border p-4"><summary className="text-sm cursor-pointer">Launch presets and execution options</summary><div className="mt-4"><BundlePresets /></div></details>
-        {view==='launch'&&<SniperPairsWorkspace mode="standalone" onBusyChange={setWalletBusy}/>}
-
-        {/* Warning stays before wallet funding and execution controls. */}
-        {(store.creatorPrivateKey||store.bundleWallets.some(wallet=>wallet.privateKey))&&<div className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
-          <div className="flex gap-3">
-            <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div className="text-sm text-yellow-500/90">
-              <p className="font-medium">Back up generated wallets before funding</p>
-              <p className="text-yellow-500/70 mt-1">
-                All signing happens in your browser. Back up generated wallets before funding them; use Wallet controls to export private keys or keypair files. Only public receipts and optional public execution presets are saved here. Closing this page stops pending timed buys and sells.
-              </p>
-            </div>
+    <div className={styles.workspace}>
+      {walletStorageError&&<p role="alert" className="notice notice-error">{walletStorageError}</p>}
+      <nav className={styles.viewTabs} aria-label="Bundle workspace">
+        <button type="button" aria-pressed={view==='launch'} disabled={store.isExecuting||walletBusy} onClick={()=>setView('launch')}>Launch setup</button>
+        <button type="button" aria-pressed={view==='wallets'} disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Wallet controls &amp; sales</button>
+      </nav>
+      <div hidden={view!=='launch'}>
+        <ol className={styles.progress} aria-label="Launch setup sections">
+          <li><a href="#bundle-wallets"><span>01</span>Wallets</a></li>
+          <li><a href="#bundle-token"><span>02</span>Token</a></li>
+          <li><a href="#bundle-execution"><span>03</span>Execution</a></li>
+          <li><a href="#bundle-review"><span>04</span>Review &amp; launch</a></li>
+        </ol>
+        <section id="bundle-wallets" className={styles.walletSection} aria-labelledby="bundle-wallets-title">
+          <div className={styles.sectionHeading}><span>01</span><div><h2 id="bundle-wallets-title">Prepare your wallets</h2><p>A sniper wallet buys. Its receiver holds the purchased tokens and can sell them later. Keep both wallets for another launch.</p></div></div>
+          {view==='launch'&&<SniperPairsWorkspace mode="standalone" onBusyChange={setWalletBusy}/>}
+          <p className={styles.fundingNote}><strong>Before you fund:</strong> download the wallet backup. Then send SOL to the deployer and sniper addresses yourself. Receiving tokens may also require account rent, which is included in the transaction checks.</p>
+          {(store.creatorPrivateKey||store.bundleWallets.some(wallet=>wallet.privateKey))&&<div className={styles.backupNotice}>
+            <div><h3>Keep a private wallet backup</h3><p>Anyone with this file can spend these wallets. Save it securely before adding SOL. Browser-timed buys and sells stop when this page closes.</p></div>
+            <Button variant="secondary" onClick={exportWalletBackup}>Download private backup</Button>
+          </div>}
+        </section>
+        <div className={styles.launchGrid}>
+          <div className={styles.formColumn}>
+            <fieldset disabled={walletBusy} className={styles.formGuard}><BundlerForm /></fieldset>
+            <details className={styles.optional}>
+              <summary>Saved launch presets<span>Optional</span></summary>
+              <div className={styles.optionalBody}><p className={styles.help}>Apply a reusable execution preset, then review its wallet amounts and timing.</p><BundlePresets /></div>
+            </details>
           </div>
-        </div>}
-
-        {(store.creatorPrivateKey||store.bundleWallets.some(wallet=>wallet.privateKey))&&<Button variant="secondary" onClick={exportWalletBackup}>Export private wallet backup</Button>}
-
-        {/* Form */}
-        <fieldset disabled={walletBusy}><BundlerForm /></fieldset>
-
-        {/* Cost Estimate */}
-        <div className="p-4 rounded-lg border border-border bg-surface space-y-2">
-          <h3 className="text-sm font-medium text-foreground mb-4">Cost review</h3>
-          <p className="text-sm">Creator fees: {store.result?.creatorFeeRouting?creatorFeeRoutingLabel(store.result.creatorFeeRouting):store.result?.createSignature?'Legacy receipt · recipient unverified':creatorFeeRoutingLabel(store.creatorFeeSelection)}</p>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="text-muted">OutSol platform fee</div>
-            <div className="text-right text-accent">0 SOL · always</div>
-            
-            <div className="text-muted">Creator buy</div>
-            <div className="text-right text-accent">{store.devBuyAmount} SOL</div>
-            
-            <div className="text-muted">Immediate buys ({sniperCount})</div>
-            <div className="text-right text-accent">
-              {validWallets.filter(w => w.mode === 'sniper').reduce((sum, w) => sum + w.buyAmount, 0).toFixed(3)} SOL
+          <aside id="bundle-review" className={styles.reviewColumn} aria-labelledby="bundle-review-title">
+            <div className={styles.reviewCard}>
+              <div className={styles.reviewHeading}><span>04</span><div><h2 id="bundle-review-title">Review &amp; launch</h2><p>Planning estimate · SOL</p></div></div>
+              <div className={styles.tokenIdentity}><strong>{store.tokenName||'Your token'}</strong><span>{store.tokenSymbol?'$'+store.tokenSymbol:'Add token details'}</span></div>
+              <dl className={styles.reviewContext}><div><dt>Deployer</dt><dd>{store.creatorPublicKey?store.creatorPublicKey.slice(0,6)+'…'+store.creatorPublicKey.slice(-4):'Not selected'}</dd></div><div><dt>Execution</dt><dd>{store.sniperMode==='block0'?'Atomic · Block 0':'After confirmation'}</dd></div></dl>
+              <dl className={styles.costs}>
+                <div><dt>LaunchPier platform fee</dt><dd className={styles.free}>0 SOL</dd></div>
+                <div><dt>Deployer buy</dt><dd>{store.devBuyAmount} SOL</dd></div>
+                <div><dt>Immediate buys <span>({sniperCount})</span></dt><dd>{validWallets.filter(w=>w.mode==='sniper').reduce((sum,w)=>sum+w.buyAmount,0).toFixed(3)} SOL</dd></div>
+                <div><dt>Delayed buys <span>({delayedCount})</span></dt><dd>{validWallets.filter(w=>w.mode==='delayed').reduce((sum,w)=>sum+w.buyAmount,0).toFixed(3)} SOL</dd></div>
+                <div><dt>{store.sniperMode==='block0'?'Validator tip':'Tip reserve, if needed'}</dt><dd>{jitoTip} SOL</dd></div>
+                <div><dt>Network &amp; rent <span>(rough)</span></dt><dd>~{networkFees.toFixed(4)} SOL</dd></div>
+                <div className={styles.total}><dt>Estimated outflow</dt><dd>~{totalEstimate.toFixed(4)} SOL</dd></div>
+              </dl>
+              <p className={styles.help}>Buy budgets purchase tokens; they are not platform fees. Protocol and creator charges are included in native quotes. Network costs, account rent and validator tips are separate.</p>
+              <details className={styles.costDetails}><summary>Execution and cost details</summary><p>Buy inputs are maximum trade budgets. Long metadata and recipient setup can require more packets and reduce atomic buyer capacity below three. A zero tip reserve disables split routes. Packet capacity and execution are checked before signing.</p><p>Creator fees: {store.result?.creatorFeeRouting?creatorFeeRoutingLabel(store.result.creatorFeeRouting):store.result?.createSignature?'Legacy receipt · recipient unverified':creatorFeeRoutingLabel(store.creatorFeeSelection)}</p></details>
+              {store.sniperMode==='block0'&&sniperCount>3&&<p className={styles.error} role="alert">Use at most three immediate buyers for atomic mode. Move other wallets to delayed timing or choose after-confirmation execution.</p>}
+              {!store.result?.createSignature&&!store.result?.bundleId&&<div className={styles.launchAction}>
+                <p className={styles.nextStep}>{nextStep}</p>
+                <Button onClick={store.executeLaunch} disabled={!canExecute} className={styles.launchButton}>
+                  {store.isExecuting?<span className={styles.executing}><span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"/>{store.statusMessage}</span>:'Launch token'}
+                </Button>
+                <p className={styles.signingNote}>Signs and sends using your selected wallets. Review everything above before continuing.</p>
+              </div>}
+              {store.isExecuting&&<Button variant="secondary" className="w-full mt-3" onClick={store.cancelPendingActions}>Cancel pending browser actions</Button>}
             </div>
-            
-            <div className="text-muted">Delayed buys ({delayedCount})</div>
-            <div className="text-right text-accent">
-              {validWallets.filter(w => w.mode === 'delayed').reduce((sum, w) => sum + w.buyAmount, 0).toFixed(3)} SOL
-            </div>
-            
-            <div className="text-muted">{store.sniperMode==='block0'?'Validator tip':'Validator tip reserve · if needed'}</div><div className="text-right text-accent">{jitoTip} SOL</div>
-            
-            <div className="text-muted">Network fees and account rent (rough)</div>
-            <div className="text-right text-accent">~{networkFees.toFixed(4)} SOL</div>
-            
-            <div className="border-t border-border pt-3 text-foreground font-medium">Total estimate</div>
-            <div className="border-t border-border pt-2 text-right text-accent font-medium">
-              ~{totalEstimate.toFixed(4)} SOL
-            </div>
-          </div>
-          <p className="text-sm text-muted">Buy inputs are maximum trade budgets. Pump protocol/creator fees are included in native quotes. Network fees, recipient setup rent and the disclosed validator tip are separate. Recipient setup and long metadata can require an atomic bundle and reduce immediate-buyer capacity below three. A zero tip reserve disables split routes. Actual packet capacity and execution are checked before signing.</p>
-          {store.sniperMode==='block0'&&sniperCount>3&&<p className="text-sm text-red-400">Atomic mode allows at most three immediate buyers. Move additional wallets to delayed mode or choose sequential execution.</p>}
+            <BundlerResult />
+            {store.result?.createSignature&&<Button variant="secondary" className="w-full" disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Open wallet controls &amp; sales</Button>}
+          </aside>
         </div>
-
-        {/* Result */}
-        <BundlerResult />
-        {store.result?.createSignature&&<Button variant="secondary" className="w-full" disabled={store.isExecuting||walletBusy} onClick={()=>setView('wallets')}>Control bundle wallets, Relay &amp; sell</Button>}
-
-        {/* Execute Button */}
-        {!store.result?.createSignature && !store.result?.bundleId && (
-          <Button
-            onClick={store.executeLaunch}
-            disabled={!canExecute}
-            className="w-full h-12 text-base"
-          >
-            {store.isExecuting ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                {store.statusMessage}
-              </span>
-            ) : (
-              `Launch (${sniperCount > 0 ? `${sniperCount} immediate` : ''}${sniperCount > 0 && delayedCount > 0 ? ' + ' : ''}${delayedCount > 0 ? `${delayedCount} delayed` : ''}${sniperCount === 0 && delayedCount === 0 ? 'create only' : ''})`
-            )}
-          </Button>
-        )}
-        {store.isExecuting&&<Button variant="secondary" className="w-full" onClick={store.cancelPendingActions}>Cancel pending browser actions</Button>}
       </div>
-      {view==='wallets'&&<div className="space-y-6"><fieldset disabled={walletBusy||store.isExecuting} className="space-y-5"><ManagedBundleWallets/><BundleWalletSetup mode="standalone" disabled={walletBusy||store.isExecuting}/></fieldset><BundleWalletControls mode="standalone" onBusyChange={setWalletBusy}/></div>}
+      {view==='wallets'&&<div className={styles.walletControls}>
+        <div className={styles.controlsIntro}><h2>Manage your bundle wallets</h2><p>Inspect balances, transfer purchased tokens to receivers, back up keys or review a sale. Every action uses the wallets selected for this bundle.</p></div>
+        <fieldset disabled={walletBusy||store.isExecuting} className="space-y-5"><ManagedBundleWallets/><BundleWalletSetup mode="standalone" disabled={walletBusy||store.isExecuting}/></fieldset>
+        <BundleWalletControls mode="standalone" onBusyChange={setWalletBusy}/>
+      </div>}
     </div>
   )
 }

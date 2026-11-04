@@ -30,7 +30,7 @@ export async function initializePopup({ chromeApi = chrome, documentObject = doc
   const remember = () => {
     if (!contextReview || !storage) return
     try { storage.setItem(REVIEW_KEY, JSON.stringify(reviewDraft(currentDraft()))) }
-    catch { status.textContent = 'Refresh recovery is unavailable. Keep this review open until you continue to OutSol.' }
+    catch { status.textContent = 'Refresh recovery is unavailable. Keep this review open until you continue to LaunchPier.' }
   }
   for (const id of ['name', 'symbol', 'description', 'source-url', 'image-url']) byId(id).addEventListener('input', () => {
     countName()
@@ -43,9 +43,9 @@ export async function initializePopup({ chromeApi = chrome, documentObject = doc
       const url = buildLaunchUrl(currentDraft())
       opening = true
       button.disabled = true
-      button.textContent = 'Opening OutSol…'
+      button.textContent = 'Opening LaunchPier…'
       await chromeApi.tabs.create({ url })
-      status.textContent = 'Draft opened in OutSol. Review the details and choose artwork there.'
+      status.textContent = 'Draft opened in LaunchPier. Review the details and choose artwork there.'
       button.textContent = 'Draft opened ↗'
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : 'The draft could not be opened. Please try again.'

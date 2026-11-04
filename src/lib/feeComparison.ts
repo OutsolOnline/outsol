@@ -2,7 +2,7 @@ import { PLATFORM_FEE_BPS } from './launchConfig'
 
 export const FEE_SOURCES_CHECKED_AT = '2026-11-03'
 export const FEE_SOURCES_CHECKED_LABEL = '3 November 2026'
-export const VANITY_FEE_POLICY = { basisPoints: PLATFORM_FEE_BPS, headline: '0% OutSol platform fees. Forever.', detail: 'OutSol adds no launch fee, trading cut or subscription. External transaction costs remain separate.' } as const
+export const VANITY_FEE_POLICY = { basisPoints: PLATFORM_FEE_BPS, headline: '0% LaunchPier platform fees. Forever.', detail: 'LaunchPier adds no launch fee, trading cut or subscription. External transaction costs remain separate.' } as const
 
 export interface PlatformFeeReference {
   name: string

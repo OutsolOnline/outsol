@@ -6,8 +6,21 @@ import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 export const metadata: Metadata = {
-  title: 'OutSol',
-  description: 'Prepare, rehearse and manage your tokens in a focused Pump.fun workspace on Solana. Zero OutSol platform fees, forever.',
+  metadataBase: new URL('https://launchpier.net'),
+  title: 'LaunchPier',
+  description: 'Prepare, rehearse, launch and manage Pump.fun tokens in one clear Solana workspace. LaunchPier charges 0% platform fees; network and protocol costs apply.',
+  openGraph: {
+    title: 'LaunchPier',
+    description: 'Prepare. Rehearse. Launch. A focused Solana workspace with 0% LaunchPier platform fees. Network and third-party costs apply.',
+    type: 'website',
+    images: [{ url: '/brand/launchpier-banner.png', width: 2172, height: 724, alt: 'LaunchPier — Prepare. Rehearse. Launch. 0% platform fees; network and third-party costs apply.' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LaunchPier',
+    description: 'Prepare, rehearse and launch on Solana with 0% LaunchPier platform fees. Network and third-party costs apply.',
+    images: ['/brand/launchpier-banner.png'],
+  },
   icons: {
     icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' }, { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' }],
     shortcut: '/favicon.ico',

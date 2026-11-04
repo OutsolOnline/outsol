@@ -1,0 +1,298 @@
+[
+  {
+    "route": "/wallet",
+    "heading": "Wallets",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/wallet",
+    "heading": "Wallets",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/wallet",
+    "heading": "Wallets",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/wallet",
+    "heading": "Wallets",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/funder",
+    "heading": "Funder",
+    "scrollWidth": 386,
+    "setup": false,
+    "width": 390
+  },
+  {
+    "route": "/funder",
+    "heading": "Funder",
+    "scrollWidth": 764,
+    "setup": false,
+    "width": 768
+  },
+  {
+    "route": "/funder",
+    "heading": "Funder",
+    "scrollWidth": 1436,
+    "setup": false,
+    "width": 1440
+  },
+  {
+    "route": "/funder",
+    "heading": "Funder",
+    "scrollWidth": 1916,
+    "setup": false,
+    "width": 1920
+  },
+  {
+    "route": "/automation-wallets",
+    "heading": "Scheduled trades, without an open tab.",
+    "scrollWidth": 386,
+    "setup": false,
+    "width": 390
+  },
+  {
+    "route": "/automation-wallets",
+    "heading": "Scheduled trades, without an open tab.",
+    "scrollWidth": 768,
+    "setup": false,
+    "width": 768
+  },
+  {
+    "route": "/automation-wallets",
+    "heading": "Scheduled trades, without an open tab.",
+    "scrollWidth": 1440,
+    "setup": false,
+    "width": 1440
+  },
+  {
+    "route": "/automation-wallets",
+    "heading": "Scheduled trades, without an open tab.",
+    "scrollWidth": 1920,
+    "setup": false,
+    "width": 1920
+  },
+  {
+    "route": "/manual",
+    "heading": "How LaunchPier works",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/manual",
+    "heading": "How LaunchPier works",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/manual",
+    "heading": "How LaunchPier works",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/manual",
+    "heading": "How LaunchPier works",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/launches",
+    "heading": "Launches",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/launches",
+    "heading": "Launches",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/launches",
+    "heading": "Launches",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/launches",
+    "heading": "Launches",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/bundler",
+    "heading": "Bundle launch",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/bundler",
+    "heading": "Bundle launch",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/bundler",
+    "heading": "Bundle launch",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/bundler",
+    "heading": "Bundle launch",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/wallet-operations",
+    "heading": "Wallets",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/wallet-operations",
+    "heading": "Wallets",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "route": "/wallet-operations",
+    "heading": "Wallets",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "route": "/wallet-operations",
+    "heading": "Wallets",
+    "scrollWidth": 1920,
+    "width": 1920
+  },
+  {
+    "route": "/library",
+    "heading": "Library",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/library",
+    "heading": "Library",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/library",
+    "heading": "Library",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/library",
+    "heading": "Library",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/activity",
+    "heading": "Activity",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "route": "/activity",
+    "heading": "Activity",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "route": "/activity",
+    "heading": "Activity",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "route": "/activity",
+    "heading": "Activity",
+    "scrollWidth": 1920,
+    "width": 1920
+  },
+  {
+    "route": "/tools",
+    "heading": "Tools",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/tools",
+    "heading": "Tools",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/tools",
+    "heading": "Tools",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/tools",
+    "heading": "Tools",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/settings",
+    "heading": "Workspace settings",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/settings",
+    "heading": "Workspace settings",
+    "scrollWidth": 764,
+    "width": 768
+  },
+  {
+    "route": "/settings",
+    "heading": "Workspace settings",
+    "scrollWidth": 1436,
+    "width": 1440
+  },
+  {
+    "route": "/settings",
+    "heading": "Workspace settings",
+    "scrollWidth": 1916,
+    "width": 1920
+  },
+  {
+    "route": "/history",
+    "heading": "History indexing",
+    "scrollWidth": 386,
+    "width": 390
+  },
+  {
+    "route": "/history",
+    "heading": "History indexing",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "route": "/history",
+    "heading": "History indexing",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "route": "/history",
+    "heading": "History indexing",
+    "scrollWidth": 1920,
+    "width": 1920
+  }
+]

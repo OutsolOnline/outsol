@@ -9,6 +9,7 @@ import { createVerifiedJitoTipTransaction, simulateAtomicBundle, submitAtomicBun
 import { preparePumpTrade, inspectTradeIntent, readTokenPosition } from '../src/lib/venues/trade'
 import { confirmSignatures, sendAndConfirmTransaction, signedTransactionSignature } from '../src/lib/transactions/send'
 import { validatePumpTransaction } from '../src/lib/transactions/validatePumpTransaction'
+import { validatePumpLaunchPlan } from '../src/lib/transactions/validatePumpLaunchPlan'
 import type { TradeInput } from '../src/lib/venues/trade'
 import { executeBundleLaunch } from '../src/lib/bundler/api'
 import type { BundleWallet, BundlerConfig } from '../src/lib/bundler/types'
@@ -136,13 +137,15 @@ describe.skipIf(process.env.RUN_PUMP_LOCALNET !== '1')('Pump complete signed loc
   it.each([{ initialBuySol: 0, priorityFeeSol: 0 }, { initialBuySol: 0.1, priorityFeeSol: 0 }, { initialBuySol: 0, priorityFeeSol: 0.00002 }, { initialBuySol: 0.1, priorityFeeSol: 0.00002 }])('creates max metadata with initial buy $initialBuySol and priority fee $priorityFeeSol, then buys and sells', async ({ initialBuySol, priorityFeeSol }) => {
     const payer = await fundFreshPayer(), mint = Keypair.generate(), online = new OnlinePumpSdk(connection), global = await online.fetchGlobal()
     const prepared = await buildCreateTransaction({ connection, userPublicKey: payer.publicKey.toBase58(), mintKeypair: mint, metadata: { ...metadata, description: 'Local fork verification' }, metadataUri: metadata.uri, initialBuyAmount: initialBuySol, priorityFee: priorityFeeSol })
-    if (!prepared.success || !prepared.transactions?.length || !prepared.nativeContext) throw new Error(prepared.error ?? 'Native creation failed')
+    if (!prepared.success || !prepared.transactions?.length || !prepared.nativeContext || !prepared.launchPlan) throw new Error(prepared.error ?? 'Native creation failed')
     const createPackets = prepared.transactions
+    validatePumpLaunchPlan({ ...prepared.launchPlan, packets: createPackets })
+    expect(createPackets.every(packet => packet.serialize().length <= 1232)).toBe(true)
     let createSignature: string
     if (prepared.requiresAtomicBundle) {
-      expect(prepared.transaction).toBeUndefined(); expect(createPackets).toHaveLength(3)
-      validatePumpTransaction(createPackets[0], { action: 'create', payer: payer.publicKey, mint: mint.publicKey, maxSolLamports: 0n, expectedMetadata: metadata })
-      validatePumpTransaction(createPackets[1], { action: 'buy', payer: payer.publicKey, mint: mint.publicKey, maxSolLamports: BigInt(Math.round(initialBuySol * 1e9)) })
+      expect(prepared.transaction).toBeUndefined(); expect(createPackets.length).toBeGreaterThanOrEqual(2); expect(createPackets.length).toBeLessThanOrEqual(5)
+      // The canonical plan binds the complete create/buy/tip recipe. A verified
+      // tip can share its final buy packet instead of requiring a third packet.
       const receipt = await submitLocalBundle(createPackets, createPackets.map(() => [payer]))
       createSignature = receipt.signatures[0]
     } else {
@@ -178,14 +181,19 @@ describe.skipIf(process.env.RUN_PUMP_LOCALNET !== '1')('Pump complete signed loc
     const sellAllSignature = await submitLocal(sellAll.transaction, [payer])
     expect(await tokenAmount(mint.publicKey, payer.publicKey)).toBe(0n)
     expect((await readTokenPosition(connection, mint.publicKey.toBase58(), payer.publicKey.toBase58())).status).toBe('active')
-    evidence({ route: 'pump-create-and-manual-trade', initialBuySol, priorityFeeSol, mint: mint.publicKey.toBase58(), createSignature, buySignature, partialSignature, sellAllSignature, createPacketBytes: createPackets.map(tx => tx.serialize().length), requiresAtomicBundle: prepared.requiresAtomicBundle, mintAuthority: state.mintAuthority, freezeAuthority: state.freezeAuthority, metadataPointerAuthority: metadataPointer!.authority, metadataUpdateAuthority: tokenMetadata.updateAuthority ?? null, checks: ['max-32-10-200-byte-metadata', 'confirmed-create', 'fixed-supply', 'revoked-mint-freeze-authorities', 'immutable-metadata-pointer-to-mint', 'revoked-metadata-update-authority', 'exact-initial-buy', 'complete-bank-buy-preview', 'unchanged-reviewed-message-on-sign', 'confirmed-manual-buy', 'confirmed-25-percent-sell', 'confirmed-100-percent-sell', 'zero-final-wallet-token-balance'] })
+    evidence({ route: 'pump-create-and-manual-trade', initialBuySol, priorityFeeSol, mint: mint.publicKey.toBase58(), createSignature, buySignature, partialSignature, sellAllSignature, createPacketBytes: createPackets.map(tx => tx.serialize().length), createStepsByPacket: prepared.launchPlan.stepsByPacket, requiresAtomicBundle: prepared.requiresAtomicBundle, mintAuthority: state.mintAuthority, freezeAuthority: state.freezeAuthority, metadataPointerAuthority: metadataPointer!.authority, metadataUpdateAuthority: tokenMetadata.updateAuthority ?? null, checks: ['max-32-10-200-byte-metadata', 'exact-native-launch-plan', 'confirmed-create', 'fixed-supply', 'revoked-mint-freeze-authorities', 'immutable-metadata-pointer-to-mint', 'revoked-metadata-update-authority', 'exact-initial-buy', 'complete-bank-buy-preview', 'unchanged-reviewed-message-on-sign', 'confirmed-manual-buy', 'confirmed-25-percent-sell', 'confirmed-100-percent-sell', 'zero-final-wallet-token-balance'] })
   }, 120_000)
 
-  it.each([{ maximumMetadata: false, buyerCount: 3 }, { maximumMetadata: true, buyerCount: 2 }])('atomically executes a full five-packet local launch with $buyerCount distinct buyers (maximum metadata=$maximumMetadata)', async ({ maximumMetadata, buyerCount }) => {
+  it.each([{ maximumMetadata: false, buyerCount: 3 }, { maximumMetadata: true, buyerCount: 2 }])('atomically executes a bounded local launch with $buyerCount distinct buyers (maximum metadata=$maximumMetadata)', async ({ maximumMetadata, buyerCount }) => {
     const creator = await fundFreshPayer(), buyers = await Promise.all(Array.from({ length: buyerCount }, () => fundFreshPayer())), mint = Keypair.generate(), bundleMetadata = { ...metadata, uri: maximumMetadata ? metadata.uri : 'https://example.com/local.json' }
-    const prepared = await buildCreateTransaction({ connection, userPublicKey: creator.publicKey.toBase58(), mintKeypair: mint, metadata: { ...bundleMetadata, description: 'Local bundle' }, metadataUri: bundleMetadata.uri, initialBuyAmount: 0.1 })
-    if (!prepared.success || !prepared.transactions?.length || !prepared.nativeContext) throw new Error(prepared.error ?? 'Bundle create failed')
+    const prepared = await buildCreateTransaction({ connection, userPublicKey: creator.publicKey.toBase58(), mintKeypair: mint, metadata: { ...bundleMetadata, description: 'Local bundle' }, metadataUri: bundleMetadata.uri, initialBuyAmount: 0.1, separateJitoTip: true })
+    if (!prepared.success || !prepared.transactions?.length || !prepared.nativeContext || !prepared.launchPlan) throw new Error(prepared.error ?? 'Bundle create failed')
+    validatePumpLaunchPlan({ ...prepared.launchPlan, packets: prepared.transactions })
     expect(prepared.requiresAtomicBundle).toBe(maximumMetadata)
+    if (prepared.requiresAtomicBundle) {
+      expect(prepared.launchPlan.separateJitoTip).toBe(true)
+      expect(prepared.launchPlan.stepsByPacket.at(-1)).toEqual(['validator-tip'])
+    }
     const transactions = prepared.requiresAtomicBundle ? prepared.transactions.slice(0, -1) : [...prepared.transactions], launchPacketCount = transactions.length, expected: bigint[] = []
     let context = prepared.nativeContext
     for (const buyer of buyers) {
@@ -193,12 +201,14 @@ describe.skipIf(process.env.RUN_PUMP_LOCALNET !== '1')('Pump complete signed loc
       context = next.context; transactions.push(next.transaction); expected.push(BigInt(context.tokenAmount.toString()))
     }
     transactions.push(await createVerifiedJitoTipTransaction(connection, creator.publicKey, transactions[0].message.recentBlockhash, 10_000))
-    expect(transactions).toHaveLength(5)
+    expect(transactions).toHaveLength(launchPacketCount + buyerCount + 1)
+    expect(transactions.length).toBeLessThanOrEqual(5)
+    expect(transactions.every(packet => packet.serialize().length <= 1232)).toBe(true)
     const signers = [...Array.from({ length: launchPacketCount }, () => [creator]), ...buyers.map(buyer => [buyer]), [creator]]
     const receipt = await submitLocalBundle(transactions, signers)
     for (let index = 0; index < buyers.length; index++) expect(await tokenAmount(mint.publicKey, buyers[index].publicKey)).toBe(expected[index])
     expect(await tokenAmount(mint.publicKey, creator.publicKey)).toBe(BigInt(prepared.tokenAmountRaw!))
-    evidence({ route: 'pump-five-packet-bundle', maximumMetadata, buyerCount, mint: mint.publicKey.toBase58(), packets: transactions.length, signatures: receipt.signatures, bundleId: receipt.bundleId, simulationUnitsConsumed: receipt.simulationUnitsConsumed, checks: ['distinct-fake-funded-buyers', 'signed-complete-bank-five-packet-simulation', 'confirmed-atomic-local-create-buys-tip', 'each-exact-quoted-token-output'], limits: ['external Jito relay acceptance and mainnet landing are not proven'] })
+    evidence({ route: 'pump-atomic-buyer-bundle', maximumMetadata, buyerCount, mint: mint.publicKey.toBase58(), packets: transactions.length, packetBytes: transactions.map(packet => packet.serialize().length), launchPacketCount, separateValidatorTip: true, signatures: receipt.signatures, bundleId: receipt.bundleId, simulationUnitsConsumed: receipt.simulationUnitsConsumed, checks: ['exact-native-launch-plan', 'distinct-fake-funded-buyers', 'signed-complete-bank-atomic-simulation', 'confirmed-atomic-local-create-buys-tip', 'each-exact-quoted-token-output'], limits: ['external Jito relay acceptance and mainnet landing are not proven'] })
   }, 120_000)
 
   it('rejects UTF-8 metadata overflow and negative/tiny buy boundaries before signing', async () => {

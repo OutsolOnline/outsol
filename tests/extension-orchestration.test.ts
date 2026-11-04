@@ -36,7 +36,7 @@ describe('extension user gesture orchestration', () => {
     documentObject.getElementById('symbol').value = 'ART'
     await documentObject.getElementById('draft-form').listeners.submit({ preventDefault: vi.fn() })
     const handedOff = new URL(chromeApi.tabs.create.mock.calls[0][0].url)
-    expect(handedOff.origin + handedOff.pathname).toBe('https://outsol.online/extension')
+    expect(handedOff.origin + handedOff.pathname).toBe('https://launchpier.net/extension')
     expect(handedOff.search).toBe('')
     expect(JSON.parse(decodeURIComponent(handedOff.hash.slice('#import='.length)))).toEqual({ version: 1, kind: 'page', name: 'Article', symbol: 'ART', description: 'Summary', sourceUrl: 'https://example.com/article' })
   })

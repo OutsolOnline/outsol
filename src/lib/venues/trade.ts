@@ -59,10 +59,10 @@ export function inspectTradeIntent(tx:VersionedTransaction,input:TradeInput,maxS
   return {tokenAmountRaw:tokenAmount.toString(),minimumSolOut:input.action==='sell'?data.readBigUInt64LE(16).toString():'0'}
 }
 
-export async function simulateTradePreview(connection:Connection,transaction:VersionedTransaction,position:TokenPosition,limits:{action:'buy'|'sell';maxBuyLamports:bigint;maxSellRaw:bigint;minimumSolOut:bigint}){
+export async function simulateTradePreview(connection:Connection,transaction:VersionedTransaction,position:TokenPosition,limits:{action:'buy'|'sell';maxBuyLamports:bigint;maxSellRaw:bigint;minimumSolOut:bigint},simulationFetch:typeof fetchBounded=fetchBounded){
   const accounts={encoding:'base64',addresses:[position.payer,position.ata]}
   const [simulation,fee]=await Promise.all([
-    fetchBounded(connection.rpcEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'simulateBundle',params:[{encodedTransactions:[Buffer.from(transaction.serialize()).toString('base64')]},{transactionEncoding:'base64',skipSigVerify:true,replaceRecentBlockhash:true,preExecutionAccountsConfigs:[accounts],postExecutionAccountsConfigs:[accounts]}]})},response=>response.json()),
+    simulationFetch(connection.rpcEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'simulateBundle',params:[{encodedTransactions:[Buffer.from(transaction.serialize()).toString('base64')]},{transactionEncoding:'base64',skipSigVerify:true,replaceRecentBlockhash:true,preExecutionAccountsConfigs:[accounts],postExecutionAccountsConfigs:[accounts]}]})},response=>response.json()),
     withTimeout(connection.getFeeForMessage(transaction.message,'confirmed')),
   ])
   if(simulation.error)throw new Error('The RPC could not provide a complete same-bank trade preview')
@@ -88,7 +88,7 @@ export async function simulateTradePreview(connection:Connection,transaction:Ver
 }
 
 /** Read-only construction and unsigned simulation. No wallet keys or sends. */
-export async function preparePumpTrade(connection:Connection,input:TradeInput,options:{exactSellAmountRaw?:string}={}):Promise<PreparedTrade>{
+export async function preparePumpTrade(connection:Connection,input:TradeInput,options:{exactSellAmountRaw?:string;simulationFetch?:typeof fetchBounded}={}):Promise<PreparedTrade>{
   if(input.action!=='sell'&&options.exactSellAmountRaw!==undefined)throw new Error('An exact token sale amount requires a sell action.')
   const limits=validateTradeInput(input),position=await readTokenPosition(connection,input.mint,input.payer)
   if(position.status!=='active')throw new Error(position.status==='graduated'?'This token graduated. Use its canonical trading venue below.':'Native trading here supports active SOL Pump.fun curves. Use the token’s launch venue below.')
@@ -102,6 +102,6 @@ export async function preparePumpTrade(connection:Connection,input:TradeInput,op
     transaction=built.transaction
   }
   const intent=inspectTradeIntent(transaction,input,maxSellRaw)
-  const preview=await simulateTradePreview(connection,transaction,position,{...limits,action:input.action,maxSellRaw,minimumSolOut:BigInt(intent.minimumSolOut)})
+  const preview=await simulateTradePreview(connection,transaction,position,{...limits,action:input.action,maxSellRaw,minimumSolOut:BigInt(intent.minimumSolOut)},options.simulationFetch)
   return {transaction,input:{...input},position,maxBuyLamports:limits.maxBuyLamports.toString(),maxSellRaw:maxSellRaw.toString(),...intent,...preview,createdAt:Date.now(),message:Buffer.from(transaction.message.serialize()).toString('base64')}
 }

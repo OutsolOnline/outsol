@@ -159,7 +159,7 @@ export function createXAuthService(options: Options = {}) {
   })
   const safeCallbackOrigin = () => {
     try { const url = new URL(process.env.X_CALLBACK_URL || ''); if (url.protocol === 'https:' && !url.username && !url.password && !url.port && url.pathname === '/api/x/callback' && !url.search && !url.hash) return url.origin } catch { /* fixed trusted fallback below */ }
-    return 'https://outsol.online'
+    return 'https://launchpier.net'
   }
   const redirect = (result: 'connected' | 'cancelled' | 'error', sessionHandle?: string) => {
     const headers = new Headers(authHeaders)

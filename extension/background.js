@@ -33,7 +33,7 @@ export function registerBackground(chromeApi) {
   chromeApi.runtime.onInstalled.addListener(async () => {
     await chromeApi.contextMenus.removeAll()
     for (const [id, kind] of Object.entries(kinds)) {
-      chromeApi.contextMenus.create({ id, title: kind === 'page' ? 'Prepare token draft with OutSol' : kind === 'selection' ? 'Prepare OutSol draft from selected text' : 'Prepare OutSol draft from this image', contexts: [kind], documentUrlPatterns: ['https://*/*'] })
+      chromeApi.contextMenus.create({ id, title: kind === 'page' ? 'Prepare token draft with LaunchPier' : kind === 'selection' ? 'Prepare LaunchPier draft from selected text' : 'Prepare LaunchPier draft from this image', contexts: [kind], documentUrlPatterns: ['https://*/*'] })
     }
   })
   chromeApi.contextMenus.onClicked.addListener((info, tab) => { void handleContextMenu(chromeApi, info, tab) })

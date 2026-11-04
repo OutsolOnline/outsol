@@ -1,0 +1,8 @@
+import {describe,expect,it} from 'vitest'
+import {FUNDING_RECOVERY_KEY,parseFundingRecovery,readFundingRecoveries,saveFundingRecovery} from '../src/lib/fundingProviders/recovery'
+const receipt={version:1 as const,kind:'launchpier-splitnow-funding' as const,capability:'a'.repeat(43),createdAt:'2026-11-04T00:00:00.000Z'}
+describe('private funding recovery import and browser persistence',()=>{
+ it('validates recovery files without accepting a private key, destination URL or provider order ID',()=>{expect(parseFundingRecovery(receipt)).toEqual(receipt);for(const value of [{...receipt,privateKey:'no'},{...receipt,url:'https://evil.example'},{...receipt,capability:'123456'},{...receipt,createdAt:'bad'}])expect(()=>parseFundingRecovery(value)).toThrow()})
+ it('retains the newest 20 distinct receipts and restores them after navigation',()=>{let value:string|null=null;const storage={getItem:(key:string)=>key===FUNDING_RECOVERY_KEY?value:null,setItem:(_key:string,next:string)=>{value=next}};for(let i=0;i<23;i++)saveFundingRecovery(storage,{...receipt,capability:String(i).padStart(43,'x')});expect(readFundingRecoveries(storage)).toHaveLength(20);saveFundingRecovery(storage,{...receipt,capability:'22'.padStart(43,'x')});expect(readFundingRecoveries(storage)).toHaveLength(20);expect(readFundingRecoveries(storage)[0].capability).toBe('22'.padStart(43,'x'))})
+ it('reports unavailable or malformed browser storage instead of discarding records',()=>{expect(()=>saveFundingRecovery({getItem:()=>{throw new Error('blocked')},setItem:()=>{}},receipt)).toThrow();expect(()=>readFundingRecoveries({getItem:()=>'{broken'})).toThrow()})
+})

@@ -1,2 +1,36 @@
 .form{min-width:0}.form :global(.grid)>*{min-width:0}.walletTable{width:100%;max-width:100%;min-width:0}
-@media(max-width:700px){.walletTable table,.walletTable tbody{display:block;width:100%;min-width:0}.walletTable thead{display:none}.walletTable tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px 14px}.walletTable td{display:block;padding:0;min-width:0;overflow-wrap:anywhere}.walletTable td::before{content:attr(data-label);display:block;font-family:inherit;font-size:11px;line-height:1.6;color:#adb8b3;margin-bottom:7px}.walletTable td:first-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}.walletTable td:first-child::before{font-size:13px;color:#edf2ef;margin:0}.walletTable td:nth-child(2),.walletTable td:last-child{grid-column:1/-1}.walletTable input,.walletTable select{min-height:36px;max-width:100%}.walletTable td:first-child button{width:32px;height:32px}.walletTable input[type=checkbox]{min-height:18px;width:18px;height:18px}.walletTable td:nth-child(2) input{min-height:38px;padding:8px;border:1px solid #2d3539;border-radius:7px}.walletTable select{width:100%;padding:5px;font-size:12px}}
+@media(max-width:700px){.walletTable table,.walletTable tbody{display:block;width:100%;min-width:0}.walletTable thead{display:none}.walletTable tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px 14px}.walletTable td{display:block;padding:0;min-width:0;overflow-wrap:anywhere}.walletTable td::before{content:attr(data-label);display:block;font-family:inherit;font-size:12px;line-height:1.6;color:var(--workspace-secondary);margin-bottom:7px}.walletTable td:first-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}.walletTable td:first-child::before{font-size:13px;color:var(--workspace-text);margin:0}.walletTable td:nth-child(2),.walletTable td:last-child{grid-column:1/-1}.walletTable input,.walletTable select{min-height:36px;max-width:100%}.walletTable td:first-child button{width:32px;height:32px}.walletTable input[type=checkbox]{min-height:18px;width:18px;height:18px}.walletTable td:nth-child(2) input{min-height:38px;padding:8px;border:1px solid var(--workspace-control-border);border-radius:7px}.walletTable select{width:100%;padding:5px;font-size:12px}}
+
+.form { display:grid; gap:20px; padding:0; margin:0; border:0; }
+.form > * { min-width:0; }
+.formSection { display:grid; gap:22px; padding:24px; border:1px solid var(--workspace-border); border-radius:10px; background:var(--workspace-surface); scroll-margin-top:88px; }
+.sectionHeading { display:flex; align-items:flex-start; gap:12px; }
+.sectionHeading > span { display:grid; place-items:center; flex:none; width:29px; height:29px; border:1px solid var(--workspace-border); border-radius:7px; font-size:12px; color:var(--workspace-secondary); font-variant-numeric:tabular-nums; }
+.sectionHeading h2 { font-size:20px; font-weight:600; letter-spacing:-.025em; line-height:1.4; }
+.sectionHeading p { max-width:680px; margin-top:5px; color:var(--workspace-secondary); font-size:13px; line-height:1.8; }
+.identityGrid { display:grid; grid-template-columns:1.35fr 1fr; gap:18px; }
+.socialGrid { display:grid; grid-template-columns:1fr; gap:16px; }
+.artworkRow { display:flex; align-items:center; gap:18px; position:relative; }
+.artworkButton { width:92px; height:92px; flex:none; overflow:hidden; border:1px dashed var(--workspace-control-border); border-radius:10px; background:var(--workspace-bg); color:var(--workspace-secondary); font-size:12px; line-height:1.6; text-align:center; }
+.artworkButton img,.bannerButton img { width:100%; height:100%; object-fit:cover; }
+.artworkButton:hover,.bannerButton:hover { border-color:var(--mint); color:var(--workspace-text); }
+.bannerButton { width:150px; height:76px; flex:none; overflow:hidden; border:1px dashed var(--workspace-control-border); border-radius:8px; background:var(--workspace-bg); color:var(--workspace-secondary); font-size:12px; }
+.textButton { min-height:36px; color:var(--mint); font-size:12px; text-align:left; text-decoration:underline; text-underline-offset:4px; }
+.help { color:var(--workspace-secondary); font-size:12px; line-height:1.8; }
+.optional { min-width:0; border:1px solid var(--workspace-border); border-radius:9px; background:var(--workspace-surface); padding:0 20px; }
+.optional > summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-height:56px; padding:12px 0; cursor:pointer; font-size:14px; color:var(--workspace-text); list-style:none; }
+.optional > summary::-webkit-details-marker { display:none; }
+.optional > summary > span { margin-left:auto; color:var(--workspace-secondary); font-size:12px; }
+.optional > summary::after { content:'+'; font-size:19px; color:var(--workspace-secondary); padding-left:8px; }
+.optional[open] > summary::after { content:'−'; }
+.optional[open] { padding-bottom:20px; }
+.formSection > .optional { padding:0; border:0; border-top:1px solid var(--workspace-border); border-radius:0; background:transparent; }
+.formSection > .optional[open] { padding-bottom:0; }
+.optionalBody { display:grid; gap:18px; padding-top:6px; }
+.form button:focus-visible,.form summary:focus-visible,.form input:focus-visible,.form textarea:focus-visible,.form select:focus-visible { outline:2px solid var(--mint); outline-offset:3px; }
+.form :global(.grid-cols-2),.form :global(.grid-cols-3) { min-width:0; }
+.form input:not([type="checkbox"]):not([type="range"]):not([type="file"]),.form select { min-height:42px; }
+@media(max-width:700px) { .formSection { padding:20px; gap:20px; }.identityGrid { grid-template-columns:1fr; gap:16px; }.optional { padding-inline:17px; }.form :global(.grid-cols-2) { grid-template-columns:1fr; }.form :global(.grid-cols-3) { grid-template-columns:1fr; }.artworkRow { gap:14px; }.artworkButton { width:82px; height:82px; }.sectionHeading h2 { font-size:19px; }.bannerButton { width:130px; }.walletTable input,.walletTable select { min-height:42px; } }
+
+.form input,.form textarea,.form select { min-width:0; max-width:100%; }
+.form :global(.font-mono) { overflow-wrap:anywhere; }

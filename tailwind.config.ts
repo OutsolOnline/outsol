@@ -11,25 +11,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // OutSol product palette
-        background: 'var(--workspace-bg, #111315)',
-        surface: 'var(--workspace-surface, #191D20)',
-        'surface-elevated': 'var(--workspace-elevated, #20262A)',
-        foreground: 'var(--workspace-text, #EDF2EF)',
-        muted: 'var(--workspace-muted, #7F8D86)',
-        'text-secondary': 'var(--workspace-secondary, #ADB8B3)',
-        'muted-dim': 'var(--workspace-muted, #7F8D86)',
-        accent: 'var(--mint, #C5D7E3)',
-        border: 'var(--workspace-border, #2D3539)',
+        // LaunchPier product palette; legacy accent variables stay compatible.
+        background: 'var(--workspace-bg, #0E1322)',
+        surface: 'var(--workspace-surface, #151D30)',
+        'surface-elevated': 'var(--workspace-elevated, #1D2940)',
+        foreground: 'var(--workspace-text, #EDF2FF)',
+        muted: 'var(--workspace-muted, #94A3BF)',
+        'text-secondary': 'var(--workspace-secondary, #B1BDD3)',
+        'muted-dim': 'var(--workspace-muted, #94A3BF)',
+        accent: 'var(--mint, #9FB6FF)',
+        border: 'var(--workspace-border, #303E58)',
         
         // Semantic
         primary: {
-          DEFAULT: 'var(--mint, #C5D7E3)',
-          foreground: '#111315',
+          DEFAULT: 'var(--mint, #9FB6FF)',
+          foreground: 'var(--accent-foreground, #0E1322)',
         },
         secondary: {
-          DEFAULT: 'var(--workspace-elevated, #20262A)',
-          foreground: 'var(--workspace-secondary, #ADB8B3)',
+          DEFAULT: 'var(--workspace-elevated, #1D2940)',
+          foreground: 'var(--workspace-secondary, #B1BDD3)',
         },
         destructive: {
           DEFAULT: '#6B4444',
@@ -37,9 +37,9 @@ const config: Config = {
         },
       },
       borderRadius: {
-        'terminal': '9999px', // Fully rounded pill shape
-        'lg': '24px',
-        'md': '16px',
+        'terminal': '10px',
+        'lg': '12px',
+        'md': '10px',
         'sm': '8px',
       },
       fontFamily: {

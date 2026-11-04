@@ -49,7 +49,7 @@ export async function parseLaunchKit(text:string):Promise<{kit:LaunchKit;artwork
  // same unbound, new-upload kit format, never restored as live wallet bindings.
  if(input.type===undefined&&input.version===1){exact(input,['version','id','name','updatedAt','metadata','metadataUri','config','artworkId','bundleSettings']);exact(object(input.config),Object.keys(DEFAULT_LAUNCH_CONFIG));exact(object(input.metadata),['name','symbol','description','website','twitter','telegram']);const legacy=createLaunchDraft(input as unknown as LaunchDraft);return {kit:toKit(legacy),artwork:null}}
  exact(input,['version','type','name','metadata','preset','roles','artwork'])
- if(input.version!==1||input.type!=='outsol-launch-kit'||typeof input.name!=='string')throw new Error('Choose a supported OutSol launch kit or public draft JSON.')
+ if(input.version!==1||input.type!=='outsol-launch-kit'||typeof input.name!=='string')throw new Error('Choose a supported LaunchPier launch kit or public draft JSON.')
  const metadata=object(input.metadata);exact(metadata,['name','symbol','description','website','twitter','telegram'])
  const preset=object(input.preset);exact(preset,['devBuySol','slippage','priorityFeeSol','jitoTipSol','mode','intervalMinSeconds','intervalMaxSeconds','deferBuys'])
  const slotRows=roles(input.roles)

@@ -28,7 +28,7 @@ export function safeXConnectionUrl(value: { authorizeUrl?: unknown; continueUrl?
   try { url = new URL(target) } catch { throw new XWorkspaceError('X connection could not be started. Try again.') }
   if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) throw new XWorkspaceError('X connection could not be started. Try again.')
   if (value.authorizeUrl !== undefined && url.hostname === 'x.com' && url.pathname === '/i/oauth2/authorize') return url.toString()
-  if (value.authorizeUrl === undefined && url.origin === 'https://outsol.online' && url.pathname === '/x' && [...url.searchParams.keys()].every(key => key === 'connection') && url.searchParams.getAll('connection').length <= 1 && (!url.search || ['connected', 'cancelled', 'error'].includes(url.searchParams.get('connection') || ''))) return url.toString()
+  if (value.authorizeUrl === undefined && ['https://launchpier.net', 'https://www.launchpier.net', 'https://outsol.online', 'https://vanity-production-2bbb.up.railway.app'].includes(url.origin) && url.pathname === '/x' && [...url.searchParams.keys()].every(key => key === 'connection') && url.searchParams.getAll('connection').length <= 1 && (!url.search || ['connected', 'cancelled', 'error'].includes(url.searchParams.get('connection') || ''))) return url.toString()
   throw new XWorkspaceError('X connection could not be started. Try again.')
 }
 

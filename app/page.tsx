@@ -1,27 +1,27 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Activity, ArrowDown, ArrowRight, ArrowUpRight, Check, CheckCheck, ChevronDown, Circle, Compass, FileText, FlaskConical, Layers3, LockKeyhole, Palette, PanelTop, Puzzle, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, Waypoints } from 'lucide-react'
+import { Activity, ArrowRight, ArrowUpRight, Check, CheckCheck, ChevronDown, Circle, Compass, FileText, FlaskConical, Layers3, LockKeyhole, Palette, PanelTop, Puzzle, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, Waypoints } from 'lucide-react'
 import { BrandMark } from '@/components/layout/Brand'
 import { LandingNav } from '@/components/landing/LandingNav'
 import { WORKSPACE_TOOLS } from '@/lib/workspaceCatalog'
 import styles from './LandingPage.module.css'
 
 export const metadata: Metadata = {
-  title: 'OutSol',
-  description: 'Design, prepare, rehearse and launch on Pump.fun. Wallet groups, bundles, artwork and token operations in one Solana workspace. 0% OutSol platform fees; network and protocol costs apply.',
+  title: 'LaunchPier',
+  description: 'Design, prepare, rehearse and launch on Pump.fun. Wallet groups, bundles, artwork and token operations in one Solana workspace. 0% LaunchPier platform fees; network and protocol costs apply.',
 }
 
 const featureGroups = [
   { icon: Palette, label: 'MAKE IT YOURS', title: 'A complete design. Ready to return to.', description: 'Build token metadata, create monogram artwork or crop an image, and keep reusable assets in your local library. Save, duplicate and resume drafts. Find a custom mint address with local parallel workers.', links: [{ title: 'Saved drafts', href: '/drafts' }, { title: 'Artwork library', href: '/artwork' }, { title: 'Vanity studio', href: '/vanity' }], visual: 'design' },
   { icon: Wallet, label: 'PREPARE YOUR WALLETS', title: 'A vault with room for your workflow.', description: 'Create or bulk import encrypted wallets, organize them into groups, and review group funding and withdrawals. Inspect balances and account rent, transfer SOL or tokens, and clean up eligible accounts.', links: [{ title: 'Wallets & groups', href: '/wallet' }, { title: 'Inspector', href: '/inspect' }, { title: 'Transfers & cleanup', href: '/wallet-operations?view=manual' }], visual: 'wallet' },
-  { icon: SlidersHorizontal, label: 'STAY WITH YOUR TOKEN', title: 'The launch is just the beginning.', description: 'Return to token facts, holdings and notes. Preview native Pump buys and sells, configure bounded trading sessions, discover confirmed launches, and follow receipts or pending operations from Activity.', links: [{ title: 'Token workspaces', href: '/projects' }, { title: 'Buy & sell', href: '/manage' }, { title: 'Trading sessions', href: '/automations' }, { title: 'Discovery', href: '/sniper' }, { title: 'Activity', href: '/activity' }], visual: 'operate' },
+  { icon: SlidersHorizontal, label: 'STAY WITH YOUR TOKEN', title: 'The launch is just the beginning.', description: 'Return to token facts, holdings and notes. Preview native Pump buys and sells, configure bounded browser sessions or dedicated-wallet scheduled trades, discover confirmed launches, and follow receipts or pending operations from Activity.', links: [{ title: 'Token workspaces', href: '/projects' }, { title: 'Buy & sell', href: '/manage' }, { title: 'Trading sessions', href: '/automations' }, { title: 'Discovery', href: '/sniper' }, { title: 'Activity', href: '/activity' }], visual: 'operate' },
 ] as const
 
 const toolIcons = { Create: Layers3, Prepare: Compass, Operate: SlidersHorizontal }
 
 function ProductPreview() {
-  return <figure className={styles.productFigure} aria-label="Illustration of an OutSol launch draft and cost review">
+  return <figure className={styles.productFigure} aria-label="Illustration of a LaunchPier launch draft and cost review">
     <div className={styles.previewBackdrop} aria-hidden="true"><span /><span /><span /></div>
     <div className={styles.productWindow}>
       <div className={styles.windowTop}><span className={styles.windowBrand}><BrandMark />Launch workspace</span><span className={styles.exampleBadge}>PRODUCT PREVIEW</span></div>
@@ -41,7 +41,7 @@ function ProductPreview() {
       </div>
       <div className={styles.windowBottom}><span><ShieldCheck size={13} />Review before you sign</span><span>Built for Solana</span></div>
     </div>
-    <div className={styles.costCard}><div className={styles.costCardHeading}><span><ScanLine size={15} />Cost review</span><span>EXAMPLE</span></div><dl><div><dt>OutSol platform fee</dt><dd>0 SOL</dd></div><div><dt>Network & account rent</dt><dd>Shown at review</dd></div><div><dt>Protocol costs & tips</dt><dd>Disclosed separately</dd></div></dl><div className={styles.costCardNote}><Check size={12} />Your review. Your approval.</div></div>
+    <div className={styles.costCard}><div className={styles.costCardHeading}><span><ScanLine size={15} />Cost review</span><span>EXAMPLE</span></div><dl><div><dt>LaunchPier platform fee</dt><dd>0 SOL</dd></div><div><dt>Network & account rent</dt><dd>Shown at review</dd></div><div><dt>Protocol costs & tips</dt><dd>Disclosed separately</dd></div></dl><div className={styles.costCardNote}><Check size={12} />Your review. Your approval.</div></div>
     <figcaption>Illustrative draft · no balances or live transactions shown</figcaption>
   </figure>
 }
@@ -67,10 +67,10 @@ export default function HomePage() {
     <main id="main-content" tabIndex={-1}>
       <section className={`${styles.hero} ${styles.container}`} aria-labelledby="hero-title">
         <div className={styles.heroCopy}>
-          <Link href="#pricing" className={styles.heroBadge}><span />0% OutSol platform fees. Always.<ArrowUpRight size={13} aria-hidden="true" /></Link>
-          <h1 id="hero-title">Your next launch.<br /><span>All in one place.</span><br />0% OutSol fees.</h1>
-          <p className={styles.heroDescription}>From the first draft to what comes after. Design, prepare and launch on Pump.fun with everything in one considered workspace.</p>
-          <div className={styles.heroActions}><Link className={styles.primaryButton} href="/launches">Open workspace<ArrowUpRight size={17} /></Link><Link className={styles.secondaryButton} href="#features">Discover OutSol<ArrowDown size={15} /></Link></div>
+          <Link href="#pricing" className={styles.heroBadge}><span />0% LaunchPier platform fees. Always.<ArrowUpRight size={13} aria-hidden="true" /></Link>
+          <h1 id="hero-title">Your token.<br /><span>Every step, in view.</span></h1>
+          <p className={styles.heroDescription}>Prepare, rehearse and launch a Pump.fun token. Organize your wallets, review your bundle and manage what comes next in one Solana workspace.</p>
+          <div className={styles.heroActions}><Link className={styles.primaryButton} href="/launch?new=1">Start a launch<ArrowUpRight size={17} /></Link><Link className={styles.secondaryButton} href="/launches">Open workspace<ArrowRight size={15} /></Link></div>
           <p className={styles.heroFootnote}>Free to use. Network fees, account rent and protocol costs apply.</p>
         </div>
         <ProductPreview />
@@ -79,8 +79,8 @@ export default function HomePage() {
       <div className={styles.contextStrip}><div className={styles.container}><span>A focused workspace for Solana.</span><span><Waypoints size={18} />Native Pump.fun launches</span><span><LockKeyhole size={17} />Local wallet signing</span><span><ScanLine size={17} />Review before execution</span></div></div>
 
       <section id="about" className={`${styles.about} ${styles.container}`} aria-labelledby="about-title">
-        <div><span className={styles.eyebrow}>A LITTLE MORE CLARITY</span><h2 id="about-title">Less friction.<br /><span>More intention.</span></h2></div>
-        <div className={styles.aboutCopy}><p>OutSol brings the pieces of a token launch into one place: your design, your wallets, your execution plan and the operations that follow.</p><p>Start with an idea. Work through the details. See what you’re signing. Come back to a workspace that keeps the context.</p><Link href="/launches" className={styles.textLink}>Meet your workspace<ArrowRight size={16} /></Link></div>
+        <div><span className={styles.eyebrow}>YOUR LAUNCH WORKSPACE</span><h2 id="about-title">An idea, with<br /><span>a clear next step.</span></h2></div>
+        <div className={styles.aboutCopy}><p>LaunchPier brings the pieces of a token launch into one place: your design, your wallets, your execution plan and the operations that follow.</p><p>Start with an idea. Work through the details. See what you’re signing. Come back to a workspace that keeps the context.</p><Link href="/launches" className={styles.textLink}>Meet your workspace<ArrowRight size={16} /></Link></div>
       </section>
 
       <section id="workflow" className={`${styles.workflowSection} ${styles.container}`} aria-labelledby="workflow-title">
@@ -121,8 +121,8 @@ export default function HomePage() {
       </section>
 
       <section id="pricing" className={styles.pricingSection} aria-labelledby="pricing-title"><div className={`${styles.container} ${styles.pricingInner}`}>
-        <div className={styles.pricingIntro}><span className={styles.eyebrow}>SIMPLE BY DESIGN</span><h2 id="pricing-title">Your launch budget.<br /><span>For your launch.</span></h2><p>The entire OutSol workspace is free to use. No subscription. No OutSol platform fee added to your launches or trades.</p><Link className={styles.darkButton} href="/launches">Start with OutSol<ArrowUpRight size={17} /></Link></div>
-        <div className={styles.pricePanel}><div className={styles.priceFigure}>0<span>%</span></div><h3>OutSol platform fees. Forever.</h3><div className={styles.priceDivider} /><ul><li><Check size={15} />All workspace tools included</li><li><Check size={15} />No OutSol launch or trade surcharge</li><li><Check size={15} />Costs reviewed before you sign</li></ul><p>Onchain actions still require SOL. Solana network fees, account rent, Pump.fun protocol or creator fees, and any disclosed validator tips or third-party costs apply. These are separate from OutSol’s zero platform fee.</p></div>
+        <div className={styles.pricingIntro}><span className={styles.eyebrow}>SIMPLE BY DESIGN</span><h2 id="pricing-title">Your launch budget.<br /><span>For your launch.</span></h2><p>The entire LaunchPier workspace is free to use. No subscription. No LaunchPier platform fee added to your launches or trades.</p><Link className={styles.darkButton} href="/launches">Start with LaunchPier<ArrowUpRight size={17} /></Link></div>
+        <div className={styles.pricePanel}><div className={styles.priceFigure}>0<span>%</span></div><h3>LaunchPier platform fees. Forever.</h3><div className={styles.priceDivider} /><ul><li><Check size={15} />All workspace tools included</li><li><Check size={15} />No LaunchPier launch or trade surcharge</li><li><Check size={15} />Costs reviewed before you sign</li></ul><p>Onchain actions still require SOL. Solana network fees, account rent, Pump.fun protocol or creator fees, and any disclosed validator tips or third-party costs apply. These are separate from LaunchPier’s zero platform fee.</p></div>
       </div></section>
 
       <section id="tools" className={`${styles.toolkitSection} ${styles.container}`} aria-labelledby="toolkit-title">
@@ -135,17 +135,17 @@ export default function HomePage() {
 
       <section className={`${styles.faqSection} ${styles.container}`} aria-labelledby="faq-title"><div><span className={styles.eyebrow}>A FEW THINGS, CLEARLY</span><h2 id="faq-title">Before you begin.</h2><p>Know the tools.<br />Understand the costs.<br />Keep the final say.</p></div><div className={styles.faqList}>
         {[
-          { q: 'Is OutSol really free?', a: 'Yes. OutSol charges 0% platform fees and has no subscription. Onchain actions still have costs: Solana network fees, account rent, Pump.fun protocol or creator fees, and any validator tips or third-party costs shown in your review.' },
-          { q: 'Where does OutSol launch tokens?', a: 'OutSol’s launch workflow creates native Pump.fun tokens on Solana. You can prepare a single launch or use Multi-launch to review two to five fresh tokens. Each launch has its own transaction and cost review.' },
+          { q: 'Is LaunchPier really free?', a: 'Yes. LaunchPier charges 0% platform fees and has no subscription. Onchain actions still have costs: Solana network fees, account rent, Pump.fun protocol or creator fees, and any validator tips or third-party costs shown in your review.' },
+          { q: 'Where does LaunchPier launch tokens?', a: 'LaunchPier’s launch workflow creates native Pump.fun tokens on Solana. You can prepare a single launch or use Multi-launch to review two to five fresh tokens. Each launch has its own transaction and cost review.' },
           { q: 'What does Atomic / Block 0 mean?', a: 'It is an execution option that coordinates token creation with compatible immediate buys in an atomic bundle. It does not guarantee first-block placement, a specific purchase order against other traders, or protection from snipers. Review the wallets, budgets, tips and current limits in the workspace.' },
-          { q: 'How should I handle wallets and saved work?', a: 'Managed wallets are encrypted, and signing happens in your browser. Export and securely store wallet backups before funding them. Drafts and artwork are stored on this device, so clearing browser data can remove them. Keep any files and key backups you need.' },
+          { q: 'How should I handle wallets and saved work?', a: 'Local vault wallets are encrypted, and their signing happens in your browser. Optional unattended trading uses a separate server-generated wallet with dedicated funds and approved caps. Export and securely store wallet backups before funding them. Drafts and artwork are stored on this device, so clearing browser data can remove them. Keep any files and key backups you need.' },
           { q: 'Can I launch from an X post?', a: 'You can import a public X post, review the resulting draft and choose what to use before launching. The browser extension can also capture page, selection and image references. Connecting an X account requires operator setup; live account monitoring and post alerts are coming soon.' },
           { q: 'Can I try the launch flow first?', a: 'Yes. Launch rehearsal executes Pump.fun creation with simulated SOL so you can inspect the result before a mainnet launch. A rehearsal does not guarantee a later mainnet outcome; network conditions and costs can change.' },
         ].map(item => <details key={item.q} className={styles.faqItem}><summary>{item.q}<ChevronDown size={17} aria-hidden="true" /></summary><p>{item.a}</p></details>)}
       </div></section>
 
-      <section className={`${styles.finalCta} ${styles.container}`} aria-labelledby="cta-title"><BrandMark className={styles.finalSymbol} /><span className={styles.eyebrow}>MAKE ROOM FOR YOUR NEXT IDEA</span><h2 id="cta-title">From first thought.<br /><span>To your next launch.</span></h2><p>Your tools are here. Your next move is yours.</p><Link className={styles.primaryButton} href="/launches">Open workspace<ArrowUpRight size={17} /></Link><span className={styles.finalFee}>0% OutSol platform fees · Network and protocol costs apply</span></section>
+      <section className={`${styles.finalCta} ${styles.container}`} aria-labelledby="cta-title"><BrandMark className={styles.finalSymbol} /><span className={styles.eyebrow}>MAKE ROOM FOR YOUR NEXT IDEA</span><h2 id="cta-title">From first thought.<br /><span>To your next launch.</span></h2><p>Your tools are here. Your next move is yours.</p><Link className={styles.primaryButton} href="/launches">Open workspace<ArrowUpRight size={17} /></Link><span className={styles.finalFee}>0% LaunchPier platform fees · Network and protocol costs apply</span></section>
     </main>
-    <footer className={styles.footer}><div className={`${styles.container} ${styles.footerTop}`}><div><Link href="/" aria-label="OutSol home"><Image src="/brand/outsol-lockup-mint.svg" width={122} height={33} alt="OutSol" /></Link><p>A considered workspace.<br />For what you create next.</p></div><nav aria-label="Footer navigation"><Link href="/launches">Launches</Link><Link href="#features">Features</Link><Link href="#tools">Tools</Link><Link href="#pricing">Pricing</Link></nav><div className={styles.socialLinks}><a href="https://github.com/OutsolOnline" target="_blank" rel="noopener noreferrer" aria-label="OutSol on GitHub (opens in new tab)"><GithubLogo />GitHub<ArrowUpRight size={13} /></a><a href="https://x.com/OutSolOnline" target="_blank" rel="noopener noreferrer" aria-label="OutSol on X (opens in new tab)"><XLogo />Follow on X<ArrowUpRight size={13} /></a></div></div><div className={`${styles.container} ${styles.footerBottom}`}><span>© {new Date().getFullYear()} OutSol</span><span>Built for Solana. Built around your workflow.</span><span>0% OutSol platform fees.</span></div></footer>
+    <footer className={styles.footer}><div className={`${styles.container} ${styles.footerTop}`}><div><Link href="/" aria-label="LaunchPier home"><Image src="/brand/launchpier-lockup-on-dark.svg" width={156} height={30} alt="LaunchPier" style={{height:'auto'}} /></Link><p>A clear plan.<br />A place to launch.</p></div><nav aria-label="Footer navigation"><Link href="/launches">Launches</Link><Link href="#features">Features</Link><Link href="#tools">Tools</Link><Link href="#pricing">Pricing</Link><a href="/brand/launchpier-banner.png" download="LaunchPier-banner.png">Brand banner</a></nav><div className={styles.socialLinks}><a href="https://github.com/OutsolOnline" target="_blank" rel="noopener noreferrer" aria-label="LaunchPier on GitHub (opens in new tab)"><GithubLogo />GitHub<ArrowUpRight size={13} /></a><a href="https://x.com/OutSolOnline" target="_blank" rel="noopener noreferrer" aria-label="LaunchPier on X (opens in new tab)"><XLogo />Follow on X<ArrowUpRight size={13} /></a></div></div><div className={`${styles.container} ${styles.footerBottom}`}><span>© {new Date().getFullYear()} LaunchPier</span><span>Built for Solana. Built around your workflow.</span><span>0% LaunchPier platform fees.</span></div></footer>
   </div>
 }

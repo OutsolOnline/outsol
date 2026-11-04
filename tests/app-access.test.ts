@@ -9,6 +9,7 @@ const salt = Buffer.alloc(16, 7)
 const hash = `scrypt$32768$8$1$${salt.toString('base64url')}$${scryptSync(password, salt, 32, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }).toString('base64url')}`
 const secret = Buffer.alloc(32, 8).toString('base64url')
 function configure() {
+  vi.stubEnv('APP_ACCESS_MODE', '')
   vi.stubEnv('NODE_ENV', 'production')
   vi.stubEnv('APP_ACCESS_PASSWORD_HASH', hash)
   vi.stubEnv('APP_ACCESS_SESSION_SECRET', secret)
@@ -25,6 +26,29 @@ beforeEach(configure)
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers() })
 
 describe('private app sessions', () => {
+  it('opens pages and tool handlers without a site password only in explicit public mode', async () => {
+    vi.stubEnv('APP_ACCESS_MODE','public')
+    vi.stubEnv('APP_ACCESS_PASSWORD_HASH','invalid-old-configuration')
+    vi.stubEnv('APP_ACCESS_SESSION_SECRET','')
+    const request=new Request('https://outsol.online/launches')
+    expect(hasAppAccess(request)).toBe(true)
+    expect(requireAppAccess(request)).toBeNull()
+    expect(proxy(new NextRequest(request)).headers.get('x-middleware-next')).toBe('1')
+    const handler=withAppAccess(()=>Response.json({publicTool:true}))
+    expect(await (await handler(request)).json()).toEqual({publicTool:true})
+    expect(()=>createAccessSession()).toThrow('Private access is not configured')
+  })
+  it('takes old access bookmarks directly to the public homepage without a password form', async () => {
+    vi.stubEnv('APP_ACCESS_MODE','public')
+    const response=await createAccessHandlers().GET(new Request('https://outsol.online/access?code=private-code'))
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('/')
+    expect(await response.text()).not.toContain('password')
+  })
+  it('fails closed on an unrecognized access mode instead of silently publishing the app',()=>{
+    vi.stubEnv('APP_ACCESS_MODE','PUBLIC')
+    expect(requireAppAccess(new Request('https://outsol.online/launch'))?.status).toBe(503)
+  })
   it('only grants a signed unexpired session and invalidates password or signing-key rotation', () => {
     const request = sessionRequest()
     expect(hasAppAccess(request)).toBe(true)

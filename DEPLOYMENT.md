@@ -1,3 +1,13 @@
+# LaunchPier public deployment
+
+The current release is public by the owner’s explicit choice: `APP_ACCESS_MODE=public`. No site-wide password is required. Old `/access` bookmarks redirect to the homepage. Keep `APP_ORIGIN=https://launchpier.net`, `PUBLIC_APP_URL=https://launchpier.net`, and `APP_ADDITIONAL_ORIGINS=https://www.launchpier.net,https://outsol.online,https://vanity-production-2bbb.up.railway.app`. Existing wallet encryption, private recovery capabilities and connected-account sessions remain required for their own data and actions.
+
+Unrecognized access-mode values fail closed. For an optional private instance, set `APP_ACCESS_MODE=private` and configure the password/session values described below. Removing the explicit public setting never silently publishes an unconfigured production instance. Existing access credentials may remain stored without being required in public mode.
+
+See [domain transition](docs/LAUNCHPIER-DOMAIN.md), [dedicated automation](docs/AUTOMATION-WALLETS.md), [history indexing](docs/BACKGROUND-JOBS.md), and [funding-provider setup](docs/FUNDING-PROVIDERS.md). All private persistent directories must be separate direct children of the mounted volume.
+
+---
+
 # Deployment
 
 The deployment target is the public [OutsolOnline/outsol repository](https://github.com/OutsolOnline/outsol) and Railway project `3d247cf8-7fd1-47e9-b689-31f5f4f9eb70`. The public domain is [OutSol](https://outsol.online). Source is published from a clean history so retired credentials from the legacy checkout are excluded.

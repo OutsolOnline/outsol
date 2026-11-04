@@ -72,5 +72,5 @@ export function validateDraft(value) {
 }
 
 export function buildLaunchUrl(value) {
-  return `https://outsol.online/extension#import=${encodeURIComponent(JSON.stringify(validateDraft(value)))}`
+  return `https://launchpier.net/extension#import=${encodeURIComponent(JSON.stringify(validateDraft(value)))}`
 }

@@ -6,6 +6,7 @@ import type {WalletOperationStorage} from '@/lib/walletOperations/history'
 import type {ResolvedSniperPair} from '@/lib/sniperPairs/catalog'
 import {createSniperPairPolicy} from '@/lib/sniperPairs/operations'
 import {RELAY_ROUTES_KEY} from '@/lib/relay/routes'
+import {WorkspaceDisclosure} from '@/components/ui/WorkspaceDisclosure'
 
 export interface SniperPairOperationsProps{pairs:readonly ResolvedSniperPair[];scope:WalletControlScope;disabled?:boolean;onBusyChange?:(busy:boolean)=>void;renderPairSettings?:(pair:ResolvedSniperPair)=>ReactNode}
 /** Fixed pair routes are public and derived from the reusable catalog. Nothing
@@ -22,5 +23,5 @@ export function SniperPairOperations({pairs,scope,disabled,onBusyChange,renderPa
   // Reading these immutable public rows must not re-authorize an old signer.
   return{getItem:key=>{if(key!==RELAY_ROUTES_KEY)throw new Error('Only fixed pair routes are available here.');return publicRoutes},setItem:()=>{throw new Error('Change a pair in its saved session before reviewing transfers.')},removeItem:()=>{throw new Error('Change a pair in its saved session before reviewing transfers.')}}
  },[stablePairs,scope])
- return <RelayWorkspace embedded pairs={stablePairs} scope={scope} routeStorage={routeStorage} disabled={disabled} onBusyChange={onBusyChange} renderPairSettings={renderPairSettings}/>
+ return <WorkspaceDisclosure title="Relay & receiver sales" description="Review pair balances, buy amounts, token transfers and sales." meta={`${stablePairs.length} ${stablePairs.length===1?'pair':'pairs'}`}><RelayWorkspace embedded pairs={stablePairs} scope={scope} routeStorage={routeStorage} disabled={disabled} onBusyChange={onBusyChange} renderPairSettings={renderPairSettings}/></WorkspaceDisclosure>
 }

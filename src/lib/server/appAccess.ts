@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
+import { configuredRequestOrigins } from './requestOrigin'
 
 const SESSION_SECONDS = 8 * 60 * 60
 const NO_STORE = 'private, no-store, max-age=0'
@@ -11,6 +12,9 @@ function decodeCanonical(value: string, length: number): Buffer | null {
 }
 
 function configuration(): AccessConfig {
+  const mode = process.env.APP_ACCESS_MODE || ''
+  if (mode === 'public') return { mode: 'disabled' }
+  if (mode && mode !== 'private') return { mode: 'blocked' }
   const hash = process.env.APP_ACCESS_PASSWORD_HASH || ''
   const secret = process.env.APP_ACCESS_SESSION_SECRET || ''
   if (!hash && !secret && process.env.NODE_ENV !== 'production') return { mode: 'disabled' }
@@ -83,14 +87,7 @@ function validAccessOrigin(value: string): string {
 }
 
 function accessOrigins(request: Request): string[] {
-  const configured = process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || ''
-  const aliases = process.env.APP_ALLOWED_ORIGINS || ''
-  if (aliases.length > 4096) throw new Error('Invalid origins')
-  const origins = aliases ? aliases.split(',').map(value => value.trim()) : []
-  if (origins.length > 8 || origins.some(value => !value)) throw new Error('Invalid origins')
-  if (configured) origins.unshift(configured)
-  if (process.env.NODE_ENV !== 'production' && !configured) origins.unshift(new URL(request.url).origin)
-  return origins.map(validAccessOrigin)
+  return configuredRequestOrigins(request)
 }
 
 /** Standalone servers see an internal URL; hosts may select, but never extend, this allowlist. */
@@ -128,7 +125,7 @@ function sessionCookie(token: string, maxAge: number): string {
   return `${cookieName()}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
 }
 
-function redirect(location: '/launch' | '/access', cookie?: string): Response {
+function redirect(location: '/' | '/launch' | '/access', cookie?: string): Response {
   const headers = new Headers({ Location: location, 'Cache-Control': NO_STORE })
   if (cookie) headers.set('Set-Cookie', cookie)
   return new Response(null, { status: 303, headers })
@@ -139,7 +136,7 @@ function accessPage(message = '', status = 200, signedIn = false): Response {
     ? '<a class="button" href="/launch">Continue to tools <span aria-hidden="true">→</span></a><form action="/api/access/logout" method="post"><button class="secondary" type="submit">Sign out</button></form>'
     : '<form action="/access" method="post"><label for="password">Access password</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256" autofocus placeholder="Enter your password"><button type="submit">Unlock workspace <span aria-hidden="true">→</span></button></form>'
   const content = status === 503 ? '<p class="notice" role="status">Private access is being configured. Please try again shortly.</p>' : `${message ? `<p class="notice" role="alert">${message}</p>` : ''}${form}`
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Private access · OutSol</title><style>:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#edf4f1;background:#0c1110}*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:28px;background:radial-gradient(ellipse at 50% 0%,#16342b 0,transparent 58%),#0c1110}main{width:100%;max-width:430px}.brand{font-size:26px;font-weight:650;letter-spacing:-1px;display:flex;align-items:center;gap:11px;margin-bottom:54px}.mark{height:27px;width:27px;border:3px solid #a3efd0;border-radius:50%;display:inline-block;box-shadow:5px -5px 0 -2px #16342b,7px -7px 0 -2px #a3efd0}.tag{color:#a3efd0;text-transform:uppercase;font-size:11px;letter-spacing:2px;font-weight:700}h1{font-size:36px;letter-spacing:-1.2px;line-height:1.1;margin:15px 0}p{color:#a7b7af;line-height:1.6;font-size:15px}form{margin-top:30px}label{display:block;font-size:13px;margin-bottom:10px;color:#d6e4dd}input{width:100%;background:#101a16;border:1px solid #35463e;color:#fff;border-radius:11px;padding:15px 16px;font:inherit;min-width:0}input:focus-visible{outline:2px solid #a3efd0;outline-offset:3px}button,.button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border:0;border-radius:11px;margin-top:15px;background:#b8f5d9;color:#10281d;font:600 14px system-ui;text-decoration:none;cursor:pointer}button:hover,.button:hover{background:#d0ffe9}.secondary{background:#1a2922;color:#c5d7cd;justify-content:center}.notice{padding:13px 15px;background:#24251a;border:1px solid #57543a;border-radius:10px;color:#e2d9b9;font-size:14px;margin-top:24px}.foot{font-size:12px;color:#758b7e;margin-top:30px;border-top:1px solid #26352d;padding-top:20px}@media(max-width:480px){body{padding:24px}.brand{margin-bottom:42px}h1{font-size:32px}}</style></head><body><main><div class="brand"><span class="mark" aria-hidden="true"></span>OutSol</div><span class="tag">Private workspace</span><h1>${signedIn ? 'You’re signed in.' : 'Your tools. Your access.'}</h1><p>${signedIn ? 'Continue to your launch tools, or end this session.' : 'Enter the access password to open this workspace.'}</p>${content}<p class="foot">${signedIn ? 'Sessions expire after 8 hours.' : 'This workspace is available by invitation.'}</p></main></body></html>`, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': NO_STORE, 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" } })
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>LaunchPier</title><style>:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#EDF2FF;background:#0E1322}*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:28px;background:radial-gradient(ellipse at 50% 0%,#1B2C57 0,transparent 58%),#0E1322}main{width:100%;max-width:430px}.brand{font-size:26px;font-weight:650;letter-spacing:-1px;display:flex;align-items:center;gap:11px;margin-bottom:54px}.mark{height:34px;width:34px;color:#9fb6ff;display:inline-block;flex:none}.tag{color:#9FB6FF;text-transform:uppercase;font-size:11px;letter-spacing:2px;font-weight:700}h1{font-size:36px;letter-spacing:-1.2px;line-height:1.1;margin:15px 0}p{color:#B1BED3;line-height:1.6;font-size:15px}form{margin-top:30px}label{display:block;font-size:13px;margin-bottom:10px;color:#D6E1FA}input{width:100%;background:#151D30;border:1px solid #34415F;color:#fff;border-radius:11px;padding:15px 16px;font:inherit;min-width:0}input:focus-visible{outline:2px solid #9FB6FF;outline-offset:3px}button,.button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 18px;border:0;border-radius:11px;margin-top:15px;background:#9FB6FF;color:#10182B;font:600 14px system-ui;text-decoration:none;cursor:pointer}button:hover,.button:hover{background:#BDD0FF}.secondary{background:#202B43;color:#CAD5EB;justify-content:center}.notice{padding:13px 15px;background:#24251a;border:1px solid #57543a;border-radius:10px;color:#e2d9b9;font-size:14px;margin-top:24px}.foot{font-size:12px;color:#9BAAC4;margin-top:30px;border-top:1px solid #2D3B56;padding-top:20px}@media(max-width:480px){body{padding:24px}.brand{margin-bottom:42px}h1{font-size:32px}}</style></head><body><main><div class="brand"><svg class="mark" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path d="M15 16H31V68H84V84H15Z"/><path d="M44 16H84V56H68V43L49 62L38 51L57 32H44Z"/></svg>LaunchPier</div><span class="tag">Private workspace</span><h1>${signedIn ? 'You’re signed in.' : 'Your tools. Your access.'}</h1><p>${signedIn ? 'Continue to your launch tools, or end this session.' : 'Enter the access password to open this workspace.'}</p>${content}<p class="foot">${signedIn ? 'Sessions expire after 8 hours.' : 'This workspace is available by invitation.'}</p></main></body></html>`, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': NO_STORE, 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" } })
 }
 
 async function readPassword(request: Request): Promise<string> {
@@ -183,6 +180,7 @@ export function createAccessHandlers() {
   return {
     async GET(request: Request): Promise<Response> {
       const config = configuration()
+      if (config.mode === 'disabled') return redirect('/')
       return config.mode === 'blocked' ? accessPage('', 503) : accessPage('', 200, hasAppAccess(request))
     },
     async POST(request: Request): Promise<Response> {

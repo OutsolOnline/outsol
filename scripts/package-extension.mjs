@@ -9,10 +9,10 @@ await mkdir(destination, { recursive: true })
 await mkdir(new URL('public/extension/', root), { recursive: true })
 
 // Derive every raster icon from the project's original vector symbol.
-const symbol = await readFile(new URL('public/brand/outsol-symbol-mint.svg', root))
+const symbol = await readFile(new URL('public/brand/launchpier-symbol-cobalt.svg', root))
 for (const size of [16, 32, 48, 128]) {
   const padding = Math.max(2, Math.round(size * 0.11))
-  const png = await sharp(symbol).resize(size - padding * 2, size - padding * 2).extend({ top: padding, bottom: padding, left: padding, right: padding, background: '#101214' }).png().toBuffer()
+  const png = await sharp(symbol).resize(size - padding * 2, size - padding * 2).extend({ top: padding, bottom: padding, left: padding, right: padding, background: '#0E1322' }).png().toBuffer()
   await writeFile(new URL(`icons/icon-${size}.png`, source), png)
   if (size === 128) await writeFile(new URL('public/extension/outsol-extension-128.png', root), png)
 }
@@ -72,4 +72,4 @@ end.writeUInt32LE(central.length, 12)
 end.writeUInt32LE(offset, 16)
 const zip = Buffer.concat([...localRecords, central, end])
 await writeFile(new URL('outsol-extension.zip', destination), zip)
-process.stdout.write(`Packaged OutSol extension: ${files.length} files, ${zip.length.toLocaleString('en-US')} bytes.\n`)
+process.stdout.write(`Packaged LaunchPier extension: ${files.length} files, ${zip.length.toLocaleString('en-US')} bytes.\n`)

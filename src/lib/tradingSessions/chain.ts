@@ -32,12 +32,12 @@ function accountTokens(account:SimAccount|null|undefined):bigint {
 function lamports(value:unknown):bigint {if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0)throw new Error('Signed simulation could not verify exact wallet balances and fees.');return BigInt(value)}
 
 /** A fresh same-bank simulation of the actual signed packet, never a replaced hash. */
-export async function simulateSignedTrade(connection:Connection,transaction:VersionedTransaction,prepared:PreparedTrade,guard:()=>void):Promise<SignedTradePreview>{
+export async function simulateSignedTrade(connection:Connection,transaction:VersionedTransaction,prepared:PreparedTrade,guard:()=>void,simulationFetch:typeof fetchBounded=fetchBounded):Promise<SignedTradePreview>{
  guard();signedTransactionSignature(transaction)
  const intent=inspectTradeIntent(transaction,prepared.input,BigInt(prepared.maxSellRaw))
  const accounts={encoding:'base64',addresses:[prepared.input.payer,prepared.position.ata]}
  const [response,fee]=await Promise.all([
-  fetchBounded(connection.rpcEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'simulateBundle',params:[{encodedTransactions:[Buffer.from(transaction.serialize()).toString('base64')]},{transactionEncoding:'base64',skipSigVerify:false,replaceRecentBlockhash:false,preExecutionAccountsConfigs:[accounts],postExecutionAccountsConfigs:[accounts]}]})},async result=>await result.json() as SimResponse),
+  simulationFetch(connection.rpcEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'simulateBundle',params:[{encodedTransactions:[Buffer.from(transaction.serialize()).toString('base64')]},{transactionEncoding:'base64',skipSigVerify:false,replaceRecentBlockhash:false,preExecutionAccountsConfigs:[accounts],postExecutionAccountsConfigs:[accounts]}]})},async result=>await result.json() as SimResponse),
   withTimeout(connection.getFeeForMessage(transaction.message,'confirmed')),
  ]);guard()
  const result=response.result?.value,rows=result?.transactionResults

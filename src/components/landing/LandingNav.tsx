@@ -54,7 +54,7 @@ export function LandingNav() {
 
   return <header ref={header} className={styles.header} onClick={closeOnNavigation}>
     <div className={styles.navInner}>
-      <Link href="/" className={styles.brand} aria-label="OutSol home"><Image src="/brand/outsol-lockup-mint.svg" width={130} height={36} alt="OutSol" priority /></Link>
+      <Link href="/" className={styles.brand} aria-label="LaunchPier home"><Image src="/brand/launchpier-lockup-on-dark.svg" width={168} height={32} alt="LaunchPier" style={{height:'auto'}} priority /></Link>
       <nav aria-label="Main navigation" className={styles.desktopNav}>
         <Link href="/launches">Launches</Link>
         <Link href="#features">Features</Link>
@@ -63,12 +63,12 @@ export function LandingNav() {
         }}>
           <summary>Tools<ChevronDown size={14} aria-hidden="true" /></summary>
           <div className={styles.toolsPopover}>
-            <div className={styles.toolsPopoverHeader}><span>The OutSol toolkit</span><Link href="#tools">Explore all tools<ArrowRight size={14} /></Link></div>
+            <div className={styles.toolsPopoverHeader}><span>The LaunchPier toolkit</span><Link href="#tools">Explore all tools<ArrowRight size={14} /></Link></div>
             <ToolLinks />
-            <div className={styles.toolsPopoverFooter}><span>One workspace. Zero OutSol platform fees.</span><Link href="/launches">Open workspace<ArrowUpRight size={14} /></Link></div>
+            <div className={styles.toolsPopoverFooter}><span>One workspace. Zero LaunchPier platform fees.</span><Link href="/launches">Open workspace<ArrowUpRight size={14} /></Link></div>
           </div>
         </details>
-        <Link href="#about">What is OutSol?</Link>
+        <Link href="#about">What is LaunchPier?</Link>
       </nav>
       <Link href="/launches" className={styles.navCta}>Open workspace<ArrowUpRight size={15} aria-hidden="true" /></Link>
       <details className={styles.mobileDisclosure}>
@@ -77,7 +77,7 @@ export function LandingNav() {
           <Link href="/launches">Launches<ArrowUpRight size={16} /></Link>
           <Link href="#features">Features<ArrowRight size={16} /></Link>
           <details className={styles.mobileToolsDisclosure}><summary>Tools<ChevronDown size={16} /></summary><ToolLinks compact /></details>
-          <Link href="#about">What is OutSol?<ArrowRight size={16} /></Link>
+          <Link href="#about">What is LaunchPier?<ArrowRight size={16} /></Link>
           <Link href="#pricing">Pricing<ArrowRight size={16} /></Link>
           <Link className={styles.mobileOpenWorkspace} href="/launches">Open workspace<ArrowUpRight size={16} /></Link>
         </nav>

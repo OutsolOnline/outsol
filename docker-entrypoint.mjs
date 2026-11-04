@@ -14,8 +14,8 @@ export function resolveStorageDirectory(storageDirectory, volumeDirectory) {
 
 export function resolveStorageDirectories(environment) {
   const volume = environment.RAILWAY_VOLUME_MOUNT_PATH || '/data'
-  const directories = [environment.ASSET_STORAGE_DIR, environment.X_STORAGE_DIR].filter(Boolean).map(value => resolveStorageDirectory(value, volume))
-  if (new Set(directories).size !== directories.length) throw new Error('Public assets and private X credentials require separate directories')
+  const directories = [environment.ASSET_STORAGE_DIR, environment.X_STORAGE_DIR, environment.FUNDING_STORAGE_DIR, environment.BACKGROUND_JOBS_STORAGE_DIR, environment.AUTOMATION_STORAGE_DIR].filter(Boolean).map(value => resolveStorageDirectory(value, volume))
+  if (new Set(directories).size !== directories.length) throw new Error('Public assets and private application data require separate directories')
   return directories
 }
 

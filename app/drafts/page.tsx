@@ -51,9 +51,9 @@ export default function DraftsPage() {
     if (!file) return
     setError(''); setNotice('')
     try {
-      if (file.size > 16000) throw new Error('Choose an OutSol public draft JSON under 16 KB.')
+      if (file.size > 16000) throw new Error('Choose a LaunchPier public draft JSON under 16 KB.')
       const value = JSON.parse(await file.text())
-      if (value?.version !== 1) throw new Error('Choose an OutSol public draft JSON export.')
+      if (value?.version !== 1) throw new Error('Choose a LaunchPier public draft JSON export.')
       const draft = createLaunchDraft(value)
       saveLaunchDraft(draft); refresh(); setNotice('Public draft imported. Artwork is stored separately on its original device; open the draft to check whether it is available here.')
     } catch (e) { setError(e instanceof Error ? e.message : 'The file is not a valid public draft.') }

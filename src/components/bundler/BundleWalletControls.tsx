@@ -3,6 +3,7 @@ import {useEffect,useMemo,useState} from 'react'
 import Link from 'next/link'
 import {useWallet} from '@solana/wallet-adapter-react'
 import {RelayWorkspace} from '@/components/relay/RelayWorkspace'
+import {WorkspaceDisclosure} from '@/components/ui/WorkspaceDisclosure'
 import {useBundlerStore} from '@/stores/bundlerStore'
 import {useLaunchStore} from '@/stores/launchStore'
 import {useWalletLibraryStore,type WalletSummary} from '@/stores/walletLibraryStore'
@@ -48,5 +49,5 @@ export function BundleWalletControls({mode,creatorAddress,onBusyChange}:BundleWa
   try{const key=`outsol-bundle-recipients-v1:${attachments.context}`,raw=JSON.stringify(next);localStorage.setItem(key,raw);if(localStorage.getItem(key)!==raw)throw new Error();setAttachments({...attachments,ids:next});setError('')}
   catch{setError('Wallets were encrypted and saved, but their bundle attachment could not be saved. Keep their backup and restore browser storage before continuing.');throw new Error('Recipient wallets are saved in the encrypted library. Their bundle attachment could not be saved.')}
  }
- return <section id="bundle-wallet-controls" aria-label="Bundle wallet controls">{error&&<p role="alert" className="notice notice-error mb-5">{error}</p>}{mode==='launch'&&mint&&<p className="field-help mb-5">Keep a backup of every controlled wallet. After a refresh, you can also select or import these wallets in <Link href="/bundler" className="text-accent underline">Bundles → Wallet controls</Link>.</p>}{attachments.identity===identity&&attachments.context?<RelayWorkspace embedded scope={scope} routeStorage={routeStorage} onRecipientCreated={attached} disabled={!!error||(mode==='standalone'?bundle.isExecuting:launch.isLoading)} onBusyChange={onBusyChange}/>:!error&&<p role="status" className="field-help">Restoring bundle wallet controls…</p>}</section>
+ return <section id="bundle-wallet-controls" aria-label="Bundle wallet controls">{error&&<p role="alert" className="notice notice-error mb-5">{error}</p>}<WorkspaceDisclosure title="Wallet relay & sales" description="Balances, token transfers, private backups and reviewed sales." meta={`${scope.wallets.length} wallets`}>{mode==='launch'&&mint&&<p className="field-help mb-5">Keep a backup of every controlled wallet. After a refresh, you can also select or import these wallets in <Link href="/bundler" className="text-accent underline">Bundles → Wallet controls</Link>.</p>}{attachments.identity===identity&&attachments.context?<RelayWorkspace embedded scope={scope} routeStorage={routeStorage} onRecipientCreated={attached} disabled={!!error||(mode==='standalone'?bundle.isExecuting:launch.isLoading)} onBusyChange={onBusyChange}/>:!error&&<p role="status" className="field-help">Restoring bundle wallet controls…</p>}</WorkspaceDisclosure></section>
 }

@@ -53,6 +53,12 @@ function provider(log: Array<{ url: string; init: RequestInit }> = []) {
 }
 
 describe('server X connection', () => {
+  it('uses the LaunchPier error continuation when callback configuration is absent', async () => {
+    vi.stubEnv('X_CALLBACK_URL', '')
+    const response = await createXAuthService({ fetcher: provider(), now: () => now }).callback(request('callback?code=untrusted'))
+    expect(response.headers.get('location')).toBe('https://launchpier.net/x?connection=error')
+  })
+
   it('reports missing setup honestly without making upstream calls', async () => {
     vi.stubEnv('X_CLIENT_SECRET', '')
     const fetcher = provider(), service = createXAuthService({ fetcher, now: () => now })

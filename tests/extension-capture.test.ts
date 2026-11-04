@@ -26,7 +26,7 @@ describe('extension capture boundary', () => {
 
   it('validates all review fields before producing the fixed fragment-only handoff', () => {
     const draft = { version: 1, kind: 'page', name: 'Fresh idea', symbol: 'IDEA', description: 'Reviewed', sourceUrl: 'https://example.com/a?secret=1#x' }
-    expect(buildLaunchUrl(draft)).toBe('https://outsol.online/extension#import=%7B%22version%22%3A1%2C%22kind%22%3A%22page%22%2C%22name%22%3A%22Fresh%20idea%22%2C%22symbol%22%3A%22IDEA%22%2C%22description%22%3A%22Reviewed%22%2C%22sourceUrl%22%3A%22https%3A%2F%2Fexample.com%2Fa%22%7D')
+    expect(buildLaunchUrl(draft)).toBe('https://launchpier.net/extension#import=%7B%22version%22%3A1%2C%22kind%22%3A%22page%22%2C%22name%22%3A%22Fresh%20idea%22%2C%22symbol%22%3A%22IDEA%22%2C%22description%22%3A%22Reviewed%22%2C%22sourceUrl%22%3A%22https%3A%2F%2Fexample.com%2Fa%22%7D')
     for (const change of [{ name: '' }, { name: '😀'.repeat(9) }, { symbol: '' }, { symbol: 'TOO_LONG_12' }, { symbol: 'é' }, { description: 'x'.repeat(1001) }, { sourceUrl: 'https://localhost/a' }, { imageUrl: 'javascript:bad' }, { version: 2 }, { kind: 'unknown' }]) {
       expect(() => validateDraft({ ...draft, ...change })).toThrow()
     }

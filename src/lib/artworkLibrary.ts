@@ -57,12 +57,12 @@ function openDatabase(): Promise<IDBDatabase> {
     if (typeof indexedDB === 'undefined') { reject(storageError(null)); return }
     let settled = false
     const fail = (error: Error) => { if (!settled) { settled = true; clearTimeout(timer); reject(error) } }
-    const timer = setTimeout(() => fail(new Error('Local artwork storage is blocked. Close other OutSol tabs and try again.')), 6000)
+    const timer = setTimeout(() => fail(new Error('Local artwork storage is blocked. Close other LaunchPier tabs and try again.')), 6000)
     try {
       const request = indexedDB.open(DATABASE, 1)
       request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' }) }
       request.onerror = () => fail(storageError(request.error))
-      request.onblocked = () => fail(new Error('Local artwork storage is blocked. Close other OutSol tabs and try again.'))
+      request.onblocked = () => fail(new Error('Local artwork storage is blocked. Close other LaunchPier tabs and try again.'))
       request.onsuccess = () => {
         const db = request.result
         if (settled) { db.close(); return }

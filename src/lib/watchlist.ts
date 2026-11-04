@@ -51,7 +51,7 @@ export function exportWatchlist(rows:WatchedWallet[]):string{return JSON.stringi
 export function importWatchlist(text:string,storage?:WatchlistStorage):WatchedWallet[]{
  if(typeof text!=='string'||text.length>MAX_BYTES)throw new Error('Use a watchlist JSON file smaller than 200 KB.')
  const value=JSON.parse(text)
- if(value?.version!==1||value.type!=='outsol-watchlist')throw new Error('Use an OutSol public watchlist export.')
+ if(value?.version!==1||value.type!=='outsol-watchlist')throw new Error('Use a LaunchPier public watchlist export.')
  const incoming=list(value.wallets),existing=readWatchlist(storage),merged=new Map(existing.map(row=>[row.address,row]))
  for(const row of incoming)merged.set(row.address,row)
  return save([...merged.values()],storage)

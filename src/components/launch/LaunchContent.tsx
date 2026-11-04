@@ -145,6 +145,6 @@ export function LaunchContent() {
     </div>{(error || (designing && store.error)) && <p role="alert" className="notice notice-error mt-5">{error || store.error}</p>}{message && <p role="status" className="notice mt-5">{message} <Link href="/drafts" className="underline inline-flex gap-1 items-center">View designs<ArrowUpRight size={13} /></Link></p>}
     {autosaveError&&<p role="alert" className="notice notice-error mt-5">Autosave paused: {autosaveError} Your current work remains on this screen. Open Library to export a saved copy.</p>}
     {walletStorageError&&<p role="alert" className="notice notice-error mt-5">{walletStorageError}</p>}
-    <div className={styles.builderFoot}><span><ShieldCheck size={13} />Private keys stay on your device.</span><span>0% OutSol fee. Network, account rent and third-party charges are separate.</span></div>
+    <div className={styles.builderFoot}><span><ShieldCheck size={13} />Private keys stay on your device.</span><span>0% LaunchPier fee. Network, account rent and third-party charges are separate.</span></div>
   </main><Footer /></div>
 }

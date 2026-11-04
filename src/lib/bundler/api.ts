@@ -155,7 +155,7 @@ export async function executeBundleLaunch(config:BundlerConfig,onProgress:(statu
       if (balance<Number(solToLamports(required))) throw new Error(`Wallet ${key.publicKey.toBase58().slice(0,8)} needs at least ${required.toFixed(5)} SOL for its buy and estimated network/rent costs`)
     }))
     await waitUntil(0,options.signal)
-    progress('Preparing metadata and native Pump launch. OutSol fee: 0 SOL.')
+    progress('Preparing metadata and native Pump launch. LaunchPier fee: 0 SOL.')
     checkCancelled()
     const creatorFeeSelection=requireSupportedCreatorFeeSelection(config.creatorFeeSelection)
     const githubRecipient=creatorFeeSelection.kind==='github'?await fetchGitHubIndividual(creatorFeeSelection.username,options.signal):undefined

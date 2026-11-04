@@ -1,18 +1,21 @@
-# OutSol
+# LaunchPier
 
 A focused Pump.fun workspace for Solana: token design, native creation, an optional first buy, wallet bundles, encrypted local wallets and transaction recovery.
 
-[Open OutSol](https://outsol.online)
+[Open LaunchPier](https://outsol.online)
 
-**OutSol’s platform fee is zero, forever.** OutSol takes no launch fee, trading cut, referral payment, or subscription. Solana transaction fees, account rent, venue/creator fees, escrow charges, and optional validator tips remain separate costs. The launch configuration exposes `PLATFORM_FEE_BPS = 0`; it does not redirect protocol fees to an OutSol receiver.
+**LaunchPier’s platform fee is zero, forever.** LaunchPier takes no launch fee, trading cut, referral payment, or subscription. Solana transaction fees, account rent, venue/creator fees, escrow charges, and optional validator tips remain separate costs. The launch configuration exposes `PLATFORM_FEE_BPS = 0`; it does not redirect protocol fees to a LaunchPier receiver.
 
 ## What is supported
 
+- [Dedicated automation wallets](docs/AUTOMATION-WALLETS.md): separate funded server wallets, explicit bounded scheduled trades, encrypted keys, private recovery and original-signature reconciliation.
+- [Durable history indexing](docs/BACKGROUND-JOBS.md): server-side bounded chain reads with honest coverage and private job access.
+- [Reviewed external funding](docs/FUNDING-PROVIDERS.md): SplitNOW manual-deposit orders and private recovery; operator API setup required. Husher integration requires partner access.
 - [Relay wallets and sales](docs/RELAY-WALLETS.md): generate encrypted source and recipient wallets, move reviewed token balances, and review individual-wallet or group sales into SOL. Sniper sessions can relay only their newly purchased tokens after a confirmed buy.
-- An animated product homepage, grouped tools menu and a separate Launches workspace with the approved OutSol identity.
+- An animated product homepage, grouped tools menu and a separate Launches workspace with the approved LaunchPier identity.
 - Block-0, Organic and Manual wallet buys inside launch preparation, with reviewed budgets and exact native transaction plans.
 - Optional **Send bought tokens to** destinations for additional Block-0 buyers. Each configured buyer transfers its exact purchase output in the same transaction; the review includes recipient-account rent and full receiving addresses. Switching away from Block-0 clears these destinations.
-- Private hosted access through a shared-password sign-in, with expiring server-verified sessions protecting pages and private APIs. Public token metadata stays readable; see [private deployment access](DEPLOYMENT.md#private-access).
+- Public access at launchpier.net with no site-wide password. Local vault passphrases, dedicated-wallet recovery capabilities and connected X sessions remain independent. Optional private-instance access is documented in [deployment](DEPLOYMENT.md#private-access).
 - Verified creator fee destinations: deployer, another Solana wallet, GitHub individual or holder rewards. See [creator fee routing](docs/CREATOR-FEE-ROUTING.md).
 - Public X post imports and reviewed launch announcements. Optional account connection requires the owner setup in [X connection](docs/X-CONNECTION.md).
 - Complete local Pump.fun rehearsal with disposable fake-SOL wallets, actual program execution and a downloadable post-state report.
@@ -72,10 +75,10 @@ The local `vendor/bigint-buffer` dependency replaces the upstream native binding
 
 Review the prepared allocations, public metadata, and total outflow before signing. A transaction signature or Jito bundle ID means submission, not confirmed execution. Unknown submissions retain their original public signatures for reconciliation; recovery checks do not resend a launch.
 
-Wallet keys, generated mint keys, and private exports stay local. Token metadata and signed transactions are intentionally public. Browser timers require the page to stay open: cancelling pending actions or leaving the bundler prevents future broadcasts and does not undo earlier submissions. Export wallet backups before depositing funds or clearing browser storage.
+Local-vault wallet keys and generated mint keys stay on the device. Optional dedicated automation generates separate server-held keys encrypted at rest; users explicitly approve its funds, schedules and limits and retain their own keypair backup. Token metadata and signed transactions are intentionally public. Browser timers require the page to stay open: cancelling pending actions or leaving the bundler prevents future broadcasts and does not undo earlier submissions. Export wallet backups before depositing funds or clearing browser storage.
 
 Use [DEPLOYMENT.md](DEPLOYMENT.md) for the private GitHub → Railway route, persistent metadata hosting, and release checks. The historical Supabase credential incident requires explicit retirement of the old backend keys; current source no longer uses Supabase.
 
 ## License
 
-No application `LICENSE` file is currently included. Third-party dependencies retain their own licenses. The zero-platform-fee pledge above describes OutSol’s product policy and does not replace a source license.
+No application `LICENSE` file is currently included. Third-party dependencies retain their own licenses. The zero-platform-fee pledge above describes LaunchPier’s product policy and does not replace a source license.

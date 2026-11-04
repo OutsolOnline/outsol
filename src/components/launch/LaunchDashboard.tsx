@@ -1,4 +1,5 @@
 'use client'
+import {PreviousWorkspaceNotice} from '@/components/layout/PreviousWorkspaceNotice'
 
 import { useEffect, useState, type MouseEvent } from 'react'
 import Link from 'next/link'
@@ -98,6 +99,7 @@ export function LaunchDashboard() {
 
   return <div className="min-h-screen flex flex-col"><Header /><main className="dashboard-main launches-main" id="workspace-content" tabIndex={-1}>
     <div className="page-heading launches-heading"><div><h1>Launches</h1><p>Prepare, rehearse and manage your tokens.</p></div><div className="launches-heading-action">{!ready ? <span className="launch-skeleton launch-action-skeleton" aria-hidden="true" /> : rows.length > 0 ? <Link href="/launch?new=1" onClick={prepareNewLaunch} className="primary-action"><Plus size={17} aria-hidden="true" />New launch</Link> : null}</div></div>
+    <PreviousWorkspaceNotice/>
     {warnings.length > 0 && <div className="notice notice-error launch-storage-warning" role="status">{warnings.map(warning => <p key={warning}>{warning}</p>)}</div>}
     {navigationError && <p className="notice notice-error launch-storage-warning" role="alert">{navigationError}</p>}
     {(!ready || rows.length > 0) && <div className="launches-toolbar"><div className="filter-tabs" aria-label="Filter launches">{filters.map(item => <button key={item.id} onClick={() => setFilter(item.id)} aria-pressed={filter === item.id}>{item.label}{ready && <span>{item.id === 'all' ? rows.length : rows.filter(row => item.id === 'token' ? row.kind === 'token' || row.kind === 'pending' : row.kind === item.id).length}</span>}</button>)}</div><div className="launch-search"><Search size={16} aria-hidden="true" /><label className="sr-only" htmlFor="launches-search">Search launches</label><input id="launches-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search launches" />{query && <button aria-label="Clear launch search" onClick={() => setQuery('')}><X size={14} /></button>}</div></div>}
