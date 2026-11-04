@@ -1,0 +1,62 @@
+{"route":"/","heading":"Your token.Every step, in view.","scrollWidth":1436,"width":1440}
+{"route":"/","heading":"Your token.Every step, in view.","scrollWidth":386,"width":390}
+{"route":"/launch?mode=standard&venue=pump","error":false,"heading":"New launch","scrollWidth":386,"width":390}
+{"route":"/launch?mode=standard&venue=pump","error":false,"heading":"New launch","scrollWidth":1436,"width":1440}
+{"route":"/manage","error":false,"heading":"Trade token","scrollWidth":386,"width":390}
+{"route":"/manage","error":false,"heading":"Trade token","scrollWidth":1440,"width":1440}
+{"route":"/drafts","error":false,"heading":"Your ideas, ready to resume.","scrollWidth":386,"width":390}
+{"route":"/drafts","error":false,"heading":"Your ideas, ready to resume.","scrollWidth":1436,"width":1440}
+{"route":"/artwork","error":false,"heading":"Your artwork, ready to reuse.","scrollWidth":386,"width":390}
+{"route":"/artwork","error":false,"heading":"Your artwork, ready to reuse.","scrollWidth":1440,"width":1440}
+{"route":"/vanity","error":false,"heading":"Make your address yours.","scrollWidth":386,"width":390}
+{"route":"/vanity","error":false,"heading":"Make your address yours.","scrollWidth":1436,"width":1440}
+{"route":"/inspect","error":false,"heading":"Wallet Inspector","scrollWidth":386,"width":390}
+{"route":"/inspect","error":false,"heading":"Wallet Inspector","scrollWidth":1440,"width":1440}
+{"route":"/launches","error":false,"heading":"Launches","scrollWidth":390,"width":390}
+{"route":"/launches","error":false,"heading":"Launches","scrollWidth":1440,"width":1440}
+{"route":"/manual","error":false,"heading":"How LaunchPier works","scrollWidth":386,"width":390}
+{"route":"/manual","error":false,"heading":"How LaunchPier works","scrollWidth":1436,"width":1440}
+{"route":"/settings","error":false,"heading":"Workspace settings","scrollWidth":386,"width":390}
+{"route":"/settings","error":false,"heading":"Workspace settings","scrollWidth":1436,"width":1440}
+{"route":"/wallet","error":false,"heading":"Wallets","scrollWidth":386,"width":390}
+{"route":"/wallet","error":false,"heading":"Wallets","scrollWidth":1440,"width":1440}
+{"route":"/automation-wallets","error":false,"heading":"Scheduled trades, without an open tab.","scrollWidth":386,"width":390}
+{"route":"/automation-wallets","error":false,"heading":"Scheduled trades, without an open tab.","scrollWidth":1440,"width":1440}
+{"route":"/history","error":false,"heading":"History indexing","scrollWidth":386,"width":390}
+{"route":"/history","error":false,"heading":"History indexing","scrollWidth":1440,"width":1440}
+{"route":"/funder","error":false,"heading":"Funder","scrollWidth":386,"width":390}
+{"route":"/funder","error":false,"heading":"Funder","scrollWidth":1436,"width":1440}
+{"route":"/bundler","error":false,"heading":"Bundle launch","scrollWidth":386,"width":390}
+{"route":"/bundler","error":false,"heading":"Bundle launch","scrollWidth":1436,"width":1440}
+{"route":"/activity","error":false,"heading":"Activity","scrollWidth":386,"width":390}
+{"route":"/activity","error":false,"heading":"Activity","scrollWidth":1440,"width":1440}
+{"route":"/library","error":false,"heading":"Library","scrollWidth":386,"width":390}
+{"route":"/library","error":false,"heading":"Library","scrollWidth":1436,"width":1440}
+{"route":"/tools","error":false,"heading":"Tools","scrollWidth":386,"width":390}
+{"route":"/tools","error":false,"heading":"Tools","scrollWidth":1436,"width":1440}
+{"route":"/wallet-operations","error":false,"heading":"Wallets","scrollWidth":386,"width":390}
+{"route":"/wallet-operations","error":false,"heading":"Wallets","scrollWidth":1440,"width":1440}
+{"route":"/watchlist","hydrated":true,"error":false,"heading":"Watchlist","scrollWidth":386,"width":390}
+{"route":"/watchlist","hydrated":true,"error":false,"heading":"Watchlist","scrollWidth":1440,"width":1440}
+{"route":"/relay","hydrated":true,"error":false,"heading":"Relay wallets","scrollWidth":386,"width":390}
+{"route":"/relay","hydrated":true,"error":false,"heading":"Relay wallets","scrollWidth":1436,"width":1440}
+{"route":"/extension","hydrated":true,"error":false,"heading":"Find the idea.Bring it to LaunchPier.","scrollWidth":386,"width":390}
+{"route":"/extension","hydrated":true,"error":false,"heading":"Find the idea.Bring it to LaunchPier.","scrollWidth":1436,"width":1440}
+{"route":"/x","hydrated":true,"error":false,"heading":"Launch from X","scrollWidth":386,"width":390}
+{"route":"/x","hydrated":true,"error":false,"heading":"Launch from X","scrollWidth":1436,"width":1440}
+{"route":"/multi-launch","hydrated":true,"error":false,"heading":"Multi-launch","scrollWidth":386,"width":390}
+{"route":"/multi-launch","hydrated":true,"error":false,"heading":"Multi-launch","scrollWidth":1436,"width":1440}
+{"route":"/sniper","hydrated":true,"error":false,"heading":"Watch the next launch.","scrollWidth":386,"width":390}
+{"route":"/sniper","hydrated":true,"error":false,"heading":"Watch the next launch.","scrollWidth":1436,"width":1440}
+{"route":"/automations","hydrated":true,"error":false,"heading":"Trading sessions","scrollWidth":386,"width":390}
+{"route":"/automations","hydrated":true,"error":false,"heading":"Trading sessions","scrollWidth":1436,"width":1440}
+{"route":"/tracker","hydrated":true,"error":false,"heading":"X tracker","scrollWidth":386,"width":390}
+{"route":"/tracker","hydrated":true,"error":false,"heading":"X tracker","scrollWidth":1440,"width":1440}
+{"route":"/planner","hydrated":true,"error":false,"heading":"Launch planner","scrollWidth":386,"width":390}
+{"route":"/planner","hydrated":true,"error":false,"heading":"Launch planner","scrollWidth":1436,"width":1440}
+{"route":"/rehearse","hydrated":true,"error":false,"heading":"Launch rehearsal","scrollWidth":386,"width":390}
+{"route":"/rehearse","hydrated":true,"error":false,"heading":"Launch rehearsal","scrollWidth":1436,"width":1440}
+{"route":"/projects","hydrated":true,"error":false,"heading":"Token workspaces","scrollWidth":386,"width":390}
+{"route":"/projects","hydrated":true,"error":false,"heading":"Token workspaces","scrollWidth":1440,"width":1440}
+{"route":"/wallet-operations?view=manual","hydrated":true,"error":false,"heading":"Manual wallet operations","scrollWidth":386,"width":390}
+{"route":"/wallet-operations?view=manual","hydrated":true,"error":false,"heading":"Manual wallet operations","scrollWidth":1436,"width":1440}

@@ -1,0 +1,509 @@
+{
+  "applicationCommit": "cf01f35",
+  "deployment": "8029cff5-8ea1-4972-8b54-3ff731c9ba54",
+  "checkedAt": "2026-11-04T13:40:59.190Z",
+  "anonymous": true,
+  "noFinancialTransactions": true,
+  "checks": [
+    {
+      "site": "https://launchpier.net",
+      "path": "/",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/launches",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/launch",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/bundler",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/wallet",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/wallet-operations",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/library",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/activity",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/tools",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/manual",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/funder",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/automation-wallets",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/history",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/settings",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/extension",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "path": "/x",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://launchpier.net",
+      "health": 200,
+      "oldAccess": 303,
+      "passwordRequired": false,
+      "brandAssets": true,
+      "automationReady": true,
+      "workerRunning": true,
+      "historyReady": true,
+      "externalFunding": "setup_required",
+      "missingOwnerCapability": 404,
+      "foreignOrigin": 403
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/launches",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/launch",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/bundler",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/wallet",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/wallet-operations",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/library",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/activity",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/tools",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/manual",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/funder",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/automation-wallets",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/history",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/settings",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/extension",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "path": "/x",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://www.launchpier.net",
+      "health": 200,
+      "oldAccess": 303,
+      "passwordRequired": false,
+      "brandAssets": true,
+      "automationReady": true,
+      "workerRunning": true,
+      "historyReady": true,
+      "externalFunding": "setup_required",
+      "missingOwnerCapability": 404,
+      "foreignOrigin": 403
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/launches",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/launch",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/bundler",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/wallet",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/wallet-operations",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/library",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/activity",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/tools",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/manual",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/funder",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/automation-wallets",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/history",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/settings",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/extension",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "path": "/x",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://outsol.online",
+      "health": 200,
+      "oldAccess": 303,
+      "passwordRequired": false,
+      "brandAssets": true,
+      "automationReady": true,
+      "workerRunning": true,
+      "historyReady": true,
+      "externalFunding": "setup_required",
+      "missingOwnerCapability": 404,
+      "foreignOrigin": 403
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/launches",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/launch",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/bundler",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/wallet",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/wallet-operations",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/library",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/activity",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/tools",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/manual",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/funder",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/automation-wallets",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/history",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/settings",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/extension",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "path": "/x",
+      "status": 200,
+      "title": "LaunchPier",
+      "anonymous": true
+    },
+    {
+      "site": "https://vanity-production-2bbb.up.railway.app",
+      "health": 200,
+      "oldAccess": 303,
+      "passwordRequired": false,
+      "brandAssets": true,
+      "automationReady": true,
+      "workerRunning": true,
+      "historyReady": true,
+      "externalFunding": "setup_required",
+      "missingOwnerCapability": 404,
+      "foreignOrigin": 403
+    }
+  ]
+}

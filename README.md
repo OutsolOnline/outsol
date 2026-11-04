@@ -67,7 +67,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-Run these checks locally after a clean `npm ci`, using Node 22 and no provider secrets, before pushing a release. GitHub Actions is not used. Railway watches the organization repository's `main` branch directly and repeats type generation, type checking, lint, regression tests, dependency audit and production build inside its Docker builder before checking application health. A failed gate stops that deployment; test files are not copied into the runtime image. Opt-in mainnet preparation/simulation tests are separate from the default suite and never submit spending transactions. Passing unit tests or a build is not evidence of a successful funded mainnet launch.
+Run these checks locally after a clean `npm ci`, using Node 22 and no provider secrets, before pushing a release. GitHub Actions is not used. Push the verified revision to the organization repository’s `main` branch, then deploy that revision to Railway. Its Docker builder repeats type generation, type checking, lint, regression tests, dependency audit and production build before checking application health. A failed gate stops that deployment; test files are not copied into the runtime image. Opt-in mainnet preparation/simulation tests are separate from the default suite and never submit spending transactions. Passing unit tests or a build is not evidence of a successful funded mainnet launch.
 
 The local `vendor/bigint-buffer` dependency replaces the upstream native binding with four bounded unsigned JavaScript conversions. Keep the checked-in overrides and lockfile together; [security notes](docs/SECURITY.md) explain the compatibility boundary.
 

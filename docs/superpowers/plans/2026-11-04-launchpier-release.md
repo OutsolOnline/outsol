@@ -17,7 +17,7 @@
 - No live transactions or funded financial testing without explicit authorization.
 - Do not upload existing local vault keys or change compatibility identifiers.
 - Public organization source repository; organization commit identity; no GitHub Actions.
-- Preserve production access protection, private RPC configuration and pending recovery.
+- Publish with explicit APP_ACCESS_MODE=public at the owner’s request; preserve wallet/capability protections, private RPC configuration and pending recovery.
 - Missing provider authorization, inventory or credentials must appear as unavailable; no fabricated marketplace, Shield route or quote.
 
 ## Review focus
@@ -33,14 +33,14 @@
 - [x] Create and inspect vector identity and banner. Save project-bound assets locally.
 - [x] Implement session dropdowns and transactional clear/new lifecycle with rollback/stale-view tests.
 - [x] Execute native launch, Block-0, relay and receiver-sale tests on strict local Surfpool: 25 signed cases passed; harness packet assumptions corrected.
-- [ ] Finish shared and feature palette, landing, visible copy, extension and access-page identity. Preserve legacy backup and URL contracts.
-- [ ] Integrate reviewed SplitNOW quotes/orders/status into Funder. Test consent, allocations, capability isolation, encrypted receipts and uncertain submissions. Keep Husher authorization dependency explicit.
-- [ ] Integrate durable history panel, startup worker and isolated volume directories. Test restart, cancellation, ownership and original-signature checkpoints.
-- [ ] Implement and independently review the bounded dedicated-wallet automation slice. No existing-key imports; encrypted server keys; explicit mint/action/budgets/expiry; same-bank signed simulation; persisted original signatures before submission; fail closed on uncertain outcomes.
-- [ ] Inspect all affected pages at 390, 768, 1440 and 1920px; verify session create/attach/remove/reuse, keyboard dialogs and refresh recovery. Save desktop/mobile screenshots.
-- [ ] Run whole-tree type, lint, unit/behavioral suite, dependency audit and production build after review fixes.
-- [ ] Record honest capability and provider setup limits; refresh comparison/source archive.
-- [ ] Commit with organization identity, push public organization repository, deploy Railway, verify protected production pages and health/release identity.
+- [x] Finish shared and feature palette, landing, visible copy, extension and access-page identity. Preserve legacy backup and URL contracts.
+- [x] Integrate reviewed SplitNOW quotes/orders/status into Funder. Test consent, allocations, capability isolation, encrypted receipts and uncertain submissions. Keep Husher authorization dependency explicit.
+- [x] Integrate durable history panel, startup worker and isolated volume directories. Test restart, cancellation, ownership and original-signature checkpoints.
+- [x] Implement and independently review the bounded dedicated-wallet automation slice. No existing-key imports; encrypted server keys; explicit mint/action/budgets/expiry; same-bank signed simulation; persisted original signatures before submission; fail closed on uncertain outcomes.
+- [x] Inspect all affected pages at 390, 768, 1440 and 1920px; verify session create/attach/remove/reuse, keyboard dialogs and refresh recovery. Save desktop/mobile screenshots.
+- [x] Run whole-tree type, lint, unit/behavioral suite, dependency audit and production build after review fixes.
+- [x] Record honest capability and provider setup limits; refresh the source archive.
+- [x] Commit with organization identity, push public organization repository, deploy Railway, verify protected production pages and health/release identity.
 
 ## Dependency rulings
 
@@ -52,3 +52,5 @@
 ## Verification and publication
 
 Use failing behavioral tests before new financial/storage behavior, then focused green tests. Root runs the complete release gates once all file owners hand off. A fresh reviewer audits the combined branch, including hosted key access and replay behavior. Publish only the verified release and smoke-test both application domains without changing the password gate.
+
+Final evidence: application cf01f35; Railway SUCCESS 8029cff5-8ea1-4972-8b54-3ff731c9ba54; 1,394 default tests + 28 signed local-fork cases + 124 live browser checks + 64 anonymous HTTPS page checks. Provider credentials/partner access and complete market-wide indexing remain honestly bounded as documented.
