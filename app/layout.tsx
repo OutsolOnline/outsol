@@ -4,6 +4,7 @@ import './globals.css'
 import { ClientProviders } from '@/providers/ClientProviders'
 import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { LAUNCHPIER_X_HANDLE } from '@/lib/publicBrand'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://launchpier.net'),
@@ -17,6 +18,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
+    site: LAUNCHPIER_X_HANDLE,
+    creator: LAUNCHPIER_X_HANDLE,
     title: 'LaunchPier',
     description: 'Prepare, rehearse and launch on Solana with 0% LaunchPier platform fees. Network and third-party costs apply.',
     images: ['/brand/launchpier-banner.png'],

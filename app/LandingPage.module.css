@@ -813,3 +813,6 @@
 .darkButton:hover { background: #263650; border-color: #263650; transform: translateY(-1px); }
 .footerTop nav > a { min-height: 32px; display: inline-flex; align-items: center; }
 @media (prefers-reduced-motion: reduce) { .darkButton:hover { transform: none; } }
+
+.heroToken { margin-top: 24px; padding-top: 18px; border-top: 1px solid #303E58; width: fit-content; max-width: 100%; }
+@media(max-width:600px) { .heroToken { margin-inline: auto; text-align: left; } }

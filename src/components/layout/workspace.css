@@ -975,3 +975,6 @@ html[data-outsol-theme="custom"] .workspace-main select { border-color: var(--wo
 html[data-outsol-theme="custom"] .workspace-main input:focus,
 html[data-outsol-theme="custom"] .workspace-main textarea:focus,
 html[data-outsol-theme="custom"] .workspace-main select:focus { border-color: var(--mint); }
+
+.launchpier-contact-footer { flex-wrap: wrap; row-gap: 18px; }
+.launchpier-contact-footer .footer-socials { flex-wrap: wrap; }

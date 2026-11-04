@@ -1,0 +1,7 @@
+.tokenAddress { min-width: 0; max-width: 100%; display: grid; gap: 7px; }
+.label { color: var(--workspace-secondary, #B1BDD3); font: 500 12px/1.5 'Inter Variable', Inter, sans-serif; }
+.tokenAddress a { display: inline-flex; gap: 8px; align-items: center; max-width: 100%; min-width: 0; color: var(--workspace-text, #EDF2FF); font: 12px/1.6 monospace; text-decoration: none; }
+.tokenAddress a > span { min-width: 0; overflow-wrap: anywhere; user-select: text; }
+.tokenAddress a > svg { flex-shrink: 0; color: var(--workspace-secondary, #B1BDD3); }
+.tokenAddress a:hover { color: var(--mint, #9FB6FF); }
+.tokenAddress a:focus-visible { outline: 2px solid var(--mint, #9FB6FF); outline-offset: 5px; border-radius: 3px; }

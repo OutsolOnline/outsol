@@ -4,6 +4,8 @@ import Image from 'next/image'
 import { Activity, ArrowRight, ArrowUpRight, Check, CheckCheck, ChevronDown, Circle, Compass, FileText, FlaskConical, Layers3, LockKeyhole, Palette, PanelTop, Puzzle, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, Waypoints } from 'lucide-react'
 import { BrandMark } from '@/components/layout/Brand'
 import { LandingNav } from '@/components/landing/LandingNav'
+import { TokenAddress } from '@/components/layout/TokenAddress'
+import { LAUNCHPIER_X_HANDLE, LAUNCHPIER_X_URL } from '@/lib/publicBrand'
 import { WORKSPACE_TOOLS } from '@/lib/workspaceCatalog'
 import styles from './LandingPage.module.css'
 
@@ -72,6 +74,7 @@ export default function HomePage() {
           <p className={styles.heroDescription}>Prepare, rehearse and launch a Pump.fun token. Organize your wallets, review your bundle and manage what comes next in one Solana workspace.</p>
           <div className={styles.heroActions}><Link className={styles.primaryButton} href="/launch?new=1">Start a launch<ArrowUpRight size={17} /></Link><Link className={styles.secondaryButton} href="/launches">Open workspace<ArrowRight size={15} /></Link></div>
           <p className={styles.heroFootnote}>Free to use. Network fees, account rent and protocol costs apply.</p>
+          <div className={styles.heroToken}><TokenAddress /></div>
         </div>
         <ProductPreview />
       </section>
@@ -146,6 +149,6 @@ export default function HomePage() {
 
       <section className={`${styles.finalCta} ${styles.container}`} aria-labelledby="cta-title"><BrandMark className={styles.finalSymbol} /><span className={styles.eyebrow}>MAKE ROOM FOR YOUR NEXT IDEA</span><h2 id="cta-title">From first thought.<br /><span>To your next launch.</span></h2><p>Your tools are here. Your next move is yours.</p><Link className={styles.primaryButton} href="/launches">Open workspace<ArrowUpRight size={17} /></Link><span className={styles.finalFee}>0% LaunchPier platform fees · Network and protocol costs apply</span></section>
     </main>
-    <footer className={styles.footer}><div className={`${styles.container} ${styles.footerTop}`}><div><Link href="/" aria-label="LaunchPier home"><Image src="/brand/launchpier-lockup-on-dark.svg" width={156} height={30} alt="LaunchPier" style={{height:'auto'}} /></Link><p>A clear plan.<br />A place to launch.</p></div><nav aria-label="Footer navigation"><Link href="/launches">Launches</Link><Link href="#features">Features</Link><Link href="#tools">Tools</Link><Link href="#pricing">Pricing</Link><a href="/brand/launchpier-banner.png" download="LaunchPier-banner.png">Brand banner</a></nav><div className={styles.socialLinks}><a href="https://github.com/OutsolOnline" target="_blank" rel="noopener noreferrer" aria-label="LaunchPier on GitHub (opens in new tab)"><GithubLogo />GitHub<ArrowUpRight size={13} /></a><a href="https://x.com/OutSolOnline" target="_blank" rel="noopener noreferrer" aria-label="LaunchPier on X (opens in new tab)"><XLogo />Follow on X<ArrowUpRight size={13} /></a></div></div><div className={`${styles.container} ${styles.footerBottom}`}><span>© {new Date().getFullYear()} LaunchPier</span><span>Built for Solana. Built around your workflow.</span><span>0% LaunchPier platform fees.</span></div></footer>
+    <footer className={styles.footer}><div className={`${styles.container} ${styles.footerTop}`}><div><Link href="/" aria-label="LaunchPier home"><Image src="/brand/launchpier-lockup-on-dark.svg" width={156} height={30} alt="LaunchPier" style={{height:'auto'}} /></Link><p>A clear plan.<br />A place to launch.</p></div><nav aria-label="Footer navigation"><Link href="/launches">Launches</Link><Link href="#features">Features</Link><Link href="#tools">Tools</Link><Link href="#pricing">Pricing</Link><a href="/brand/launchpier-banner.png" download="LaunchPier-banner.png">Brand banner</a></nav><div className={styles.socialLinks}><a href="https://github.com/OutsolOnline" target="_blank" rel="noopener noreferrer" aria-label="LaunchPier on GitHub (opens in new tab)"><GithubLogo />GitHub<ArrowUpRight size={13} /></a><a href={LAUNCHPIER_X_URL} target="_blank" rel="noopener noreferrer" aria-label="LaunchPier on X (opens in new tab)"><XLogo />{LAUNCHPIER_X_HANDLE}<ArrowUpRight size={13} /></a></div></div><div className={`${styles.container} ${styles.footerBottom}`}><span>© {new Date().getFullYear()} LaunchPier</span><span>Built for Solana. Built around your workflow.</span><span>0% LaunchPier platform fees.</span></div></footer>
   </div>
 }
